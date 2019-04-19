@@ -1,0 +1,12 @@
+[package]
+name = "async-timer"
+version = "0.1.0"
+authors = ["Douman <douman@gmx.se>"]
+edition = "2018"
+
+[dev-dependencies.futures-preview]
+version = "0.3.0-alpha.14"
+
+[target.'cfg(windows)'.dependencies.winapi]
+version = "0.3"
+features = ["std", "threadpoolapiset"]
