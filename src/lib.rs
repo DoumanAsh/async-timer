@@ -4,7 +4,13 @@
 
 #![warn(missing_docs)]
 
+#![cfg_attr(feature = "no_std", no_std)]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::style))]
+
+#[cfg(feature = "no_std")]
+extern crate alloc;
+#[cfg(not(feature = "no_std"))]
+use std as alloc;
 
 use core::{task, time};
 
@@ -14,12 +20,14 @@ mod utils;
 pub mod state;
 ///Builtin implementations of `Timer`
 pub mod provider;
-///Delay's future
+///Delaying future
 pub mod delay;
-//pub mod timed;
+///Timed wrapper for futures
+pub mod timed;
 
 pub use state::TimerState;
 pub use delay::Delay;
+pub use timed::Timed;
 
 #[cfg(windows)]
 ///Windows timer alias

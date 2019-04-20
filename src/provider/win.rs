@@ -42,7 +42,7 @@ impl WinTimer {
 
     fn start(&mut self, time: i64, interval: c_ulong) {
         unsafe {
-            let mut time: FILETIME = std::mem::transmute(time);
+            let mut time: FILETIME = core::mem::transmute(time);
             SetThreadpoolTimerEx(self.timer, &mut time, interval, 0);
         }
     }

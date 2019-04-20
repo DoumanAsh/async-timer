@@ -4,15 +4,17 @@ use core::pin::Pin;
 use core::future::Future;
 use core::{task, time};
 
-use crate::Timer;
+use crate::{PlatformTimer, Timer};
 use crate::state::TimerState;
+
+use crate::alloc::boxed::Box;
 
 enum State<T> {
     Init,
     Active(Box<TimerState>, T)
 }
 
-#[must_use = "futures do nothing unless polled"]
+#[must_use = "Delay does nothing unless polled"]
 ///Future that resolves sometime in future
 ///
 ///## Implementation notes
@@ -32,8 +34,8 @@ enum State<T> {
 ///
 /// Delay::platform_new(time::Duration::from_secs(2));
 ///```
-pub struct Delay<T=crate::PlatformTimer> {
-    timeout: time::Duration,
+pub struct Delay<T=PlatformTimer> {
+    pub(crate) timeout: time::Duration,
     state: State<T>
 }
 
@@ -55,6 +57,22 @@ impl<T: Timer> Delay<T> {
         Self {
             timeout,
             state: State::Init,
+        }
+    }
+
+    ///Resets `Delay` to initial state.
+    pub fn restart(&mut self, ctx: &task::Context) {
+        match self.state {
+            State::Init => (),
+            State::Active(ref mut _state, ref mut timer) => {
+                match timer.state().is_done() {
+                    true => (),
+                    false => timer.reset(),
+                }
+
+                timer.register_waker(ctx.waker());
+                timer.start_delay(self.timeout)
+            }
         }
     }
 }
