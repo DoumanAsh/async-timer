@@ -3,6 +3,16 @@ name = "async-timer"
 version = "0.1.0"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
+description = "Timers for Rust async story"
+readme = "README.md"
+repository = "https://github.com/DoumanAsh/async-timer"
+license = "Apache-2.0"
+keywords = ["timer", "async", "wasm"]
+include = [
+    "**/*.rs",
+    "Cargo.toml",
+    "README.md"
+]
 
 [features]
 default = []
