@@ -9,9 +9,13 @@ default = []
 # Requires alloc
 no_std = []
 
-[dev-dependencies.futures-preview]
-version = "0.3.0-alpha.14"
+[target.'cfg(any(target_arch = "wasm32"))'.dependencies]
+wasm-bindgen = "0.2"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
 features = ["threadpoolapiset"]
+
+[dev-dependencies.futures-preview]
+version = "0.3.0-alpha.14"
+

@@ -13,12 +13,20 @@ use winapi::um::threadpoolapiset::{
 };
 
 use winapi::ctypes::{c_ulong, c_void};
-use winapi::um::winnt::{PTP_CALLBACK_INSTANCE, PTP_TIMER};
+use winapi::um::winnt::{PTP_TIMER_CALLBACK, PTP_CALLBACK_INSTANCE, PTP_TIMER};
 
 unsafe extern "system" fn timer_callback(_: PTP_CALLBACK_INSTANCE, data: *mut c_void, _: PTP_TIMER) {
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
     let state = data as *mut TimerState;
 
     (*state).wake();
+}
+
+unsafe extern "system" fn interval_callback(_: PTP_CALLBACK_INSTANCE, data: *mut c_void, _: PTP_TIMER) {
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+    let state = data as *mut TimerState;
+
+    (*state).wake_by_ref();
 }
 
 ///Windows Native timer
@@ -31,10 +39,10 @@ unsafe impl Send for WinTimer {}
 unsafe impl Sync for WinTimer {}
 
 impl WinTimer {
-    fn init_self(&mut self) {
+    fn init_self(&mut self, cb: PTP_TIMER_CALLBACK) {
         if self.timer.is_null() {
             self.timer = unsafe {
-                CreateThreadpoolTimer(Some(timer_callback), self.state as *mut c_void, ptr::null_mut())
+                CreateThreadpoolTimer(cb, self.state as *mut c_void, ptr::null_mut())
             };
             debug_assert!(!self.timer.is_null());
         }
@@ -56,7 +64,6 @@ impl Timer for WinTimer {
         }
     }
 
-    #[inline]
     fn reset(&mut self) {
         if !self.timer.is_null() {
             unsafe {
@@ -75,7 +82,7 @@ impl Timer for WinTimer {
     }
 
     fn start_delay(&mut self, timeout: time::Duration) {
-        self.init_self();
+        self.init_self(Some(timer_callback));
 
         let mut ticks = i64::from(timeout.subsec_nanos() / 100);
         ticks += (timeout.as_secs() * 10_000_000) as i64;
@@ -85,7 +92,7 @@ impl Timer for WinTimer {
     }
 
     fn start_interval(&mut self, interval: time::Duration) {
-        self.init_self();
+        self.init_self(Some(interval_callback));
 
         let mut ticks = i64::from(interval.subsec_nanos() / 100);
         ticks += (interval.as_secs() * 10_000_000) as i64;

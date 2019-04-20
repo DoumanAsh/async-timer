@@ -98,6 +98,12 @@ impl AtomicWaker {
         }
     }
 
+    fn wake_by_ref(&self) {
+        if let Some(waker) = unsafe { (*self.waker.get()).as_ref() } {
+            waker.wake_by_ref();
+        }
+    }
+
     fn take(&self) -> Option<Waker> {
         // AcqRel ordering is used in order to acquire the value of the `task`
         // cell as well as to establish a `release` ordering with whatever
@@ -169,5 +175,11 @@ impl TimerState {
     ///After that `Waker` is no longer registered with `TimerState`
     pub fn wake(&self) {
         self.inner.wake();
+    }
+
+    #[inline]
+    ///Notifies underlying `Waker` without consuming it
+    pub fn wake_by_ref(&self) {
+        self.inner.wake_by_ref();
     }
 }

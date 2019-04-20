@@ -33,7 +33,11 @@ pub use timed::Timed;
 ///Windows timer alias
 pub type PlatformTimer = provider::win::WinTimer;
 
-#[cfg(not(any(windows)))]
+#[cfg(target_arch = "wasm32")]
+///Wasm Web based timer
+pub type PlatformTimer = provider::web::WebTimer;
+
+#[cfg(not(any(windows, target_arch = "wasm32")))]
 ///Dummy timer alias
 pub type PlatformTimer = provider::dummy::DummyTimer;
 
@@ -51,6 +55,8 @@ pub trait Timer: Send + Sync + Unpin {
     fn reset(&mut self);
 
     ///Starts timer as one-shot with specified timeout.
+    ///
+    ///After timer is expired, `TimerState` will remove registered waker, if any
     fn start_delay(&mut self, timeout: time::Duration);
 
     ///Starts timer as periodic with specified interval.
