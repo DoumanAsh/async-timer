@@ -60,7 +60,10 @@ impl<T: Timer> Delay<T> {
         }
     }
 
-    ///Resets `Delay` to initial state.
+    ///Restarts underlying `Timer`.
+    ///
+    ///Comparing to creating `Delay`
+    ///the `Timer` will start counting immediately.
     pub fn restart(&mut self, ctx: &task::Context) {
         match self.state {
             State::Init => (),
