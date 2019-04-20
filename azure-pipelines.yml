@@ -27,5 +27,7 @@ steps:
     displayName: Windows install rust
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
+  - script: cargo check --all --features no_std
+    displayName: Cargo check no_std
   - script: cargo test --all
     displayName: Cargo test
