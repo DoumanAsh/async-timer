@@ -14,9 +14,19 @@ enum State<T> {
 
 #[must_use = "futures do nothing unless polled"]
 ///Future that resolves sometime in future
-pub struct Delay<T> {
+pub struct Delay<T=crate::PlatformTimer> {
     timeout: time::Duration,
     state: State<T>
+}
+
+impl Delay {
+    ///Creates new instance using [PlatformTimer](../type.PlatformTimer.html)
+    pub fn platform_new(timeout: time::Duration) -> Self {
+        Self {
+            timeout,
+            state: State::Init,
+        }
+    }
 }
 
 impl<T: Timer> Delay<T> {

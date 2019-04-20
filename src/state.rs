@@ -1,6 +1,5 @@
 //!State module
 
-use core::mem;
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicUsize};
 use core::sync::atomic::Ordering::{Acquire, Release, AcqRel};

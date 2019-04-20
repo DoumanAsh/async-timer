@@ -1,13 +1,13 @@
 #![feature(async_await, await_macro, futures_api)]
 
-use async_timer::{PlatformTimer, Delay};
+use async_timer::{Delay};
 use futures::executor::block_on;
 
 use std::time;
 
 #[test]
 fn test_delay() {
-    let work = Delay::<PlatformTimer>::new(time::Duration::from_secs(2));
+    let work = Delay::platform_new(time::Duration::from_secs(2));
 
     let before = time::SystemTime::now();
     block_on(work);

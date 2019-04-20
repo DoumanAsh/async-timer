@@ -21,9 +21,13 @@ pub mod delay;
 pub use state::TimerState;
 pub use delay::Delay;
 
-///Platform selected timer alias
 #[cfg(windows)]
+///Windows timer alias
 pub type PlatformTimer = provider::win::WinTimer;
+
+#[cfg(not(any(windows)))]
+///Dummy timer alias
+pub type PlatformTimer = provider::dummy::DummyTimer;
 
 ///Describes `Timer` interface
 pub trait Timer: Send + Sync + Unpin {
