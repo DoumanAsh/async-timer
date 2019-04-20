@@ -149,6 +149,10 @@ impl TimerState {
 
     #[inline]
     ///Returns whether notification has been fired.
+    ///
+    ///Namely it checks whether `Waker` is registered
+    ///with `TimerState` or not. It is not intended for user
+    ///to call `is_done` before  `register`
     pub fn is_done(&self) -> bool {
         !self.inner.is_registered()
     }
@@ -161,6 +165,8 @@ impl TimerState {
 
     #[inline]
     ///Notifies underlying `Waker`
+    ///
+    ///After that `Waker` is no longer registered with `TimerState`
     pub fn wake(&self) {
         self.inner.wake();
     }

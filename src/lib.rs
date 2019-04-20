@@ -32,6 +32,11 @@ pub type PlatformTimer = provider::dummy::DummyTimer;
 ///Describes `Timer` interface
 pub trait Timer: Send + Sync + Unpin {
     ///Creates new instance
+    ///
+    ///[TimerState](state/struct.TimerState.html) is provided as pointer
+    ///due to it being managed by abstraction that uses `Timer`
+    ///It must be valid non-null pointer and is intended to be used with callbacks
+    ///that accept pointer for user's provided data
     fn new(state: *const TimerState) -> Self;
 
     ///Resets timer, and cancells ongoing work, if necessary

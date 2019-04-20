@@ -14,6 +14,24 @@ enum State<T> {
 
 #[must_use = "futures do nothing unless polled"]
 ///Future that resolves sometime in future
+///
+///## Implementation notes
+///
+///When `Future` is created, timer is not yet started.
+///The actual timer will start only after future will be initally polled.
+///
+///After timer expires, executor will be notified and next call to `Future::poll` shall
+///return `Ready`, after which all further calls to `Future::poll` result in `Pending`
+///without restarting timer.
+///
+///## Usage
+///
+///```rust,no_run
+/// use async_timer::Delay;
+/// use core::time;
+///
+/// Delay::platform_new(time::Duration::from_secs(2));
+///```
 pub struct Delay<T=crate::PlatformTimer> {
     timeout: time::Duration,
     state: State<T>
@@ -31,6 +49,8 @@ impl Delay {
 
 impl<T: Timer> Delay<T> {
     ///Creates new instance with specified timeout
+    ///
+    ///Requires to specify `Timer` type (e.g. `Delay::<PlatformTimer>::new()`)
     pub fn new(timeout: time::Duration) -> Self {
         Self {
             timeout,
