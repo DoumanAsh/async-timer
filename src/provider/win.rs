@@ -77,7 +77,7 @@ impl Timer for WinTimer {
     fn start_delay(&mut self, timeout: time::Duration) {
         self.init_self();
 
-        let mut ticks = (timeout.subsec_nanos() / 100) as i64;
+        let mut ticks = i64::from(timeout.subsec_nanos() / 100);
         ticks += (timeout.as_secs() * 10_000_000) as i64;
         let ticks = -ticks;
 
@@ -87,7 +87,7 @@ impl Timer for WinTimer {
     fn start_interval(&mut self, interval: time::Duration) {
         self.init_self();
 
-        let mut ticks = (interval.subsec_nanos() / 100) as i64;
+        let mut ticks = i64::from(interval.subsec_nanos() / 100);
         ticks += (interval.as_secs() * 10_000_000) as i64;
         let millis = (ticks / 10_000) as u32;
         let ticks = -ticks;
