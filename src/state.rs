@@ -99,8 +99,16 @@ impl AtomicWaker {
     }
 
     fn wake_by_ref(&self) {
-        if let Some(waker) = unsafe { (*self.waker.get()).as_ref() } {
-            waker.wake_by_ref();
+        //See take below
+        match self.state.fetch_or(WAKING, AcqRel) {
+            WAITING => {
+                if let Some(waker) = unsafe { (*self.waker.get()).as_ref() } {
+                    waker.wake_by_ref();
+                }
+
+                self.state.fetch_and(!WAKING, Release);
+            }
+            state => debug_assert!(state == REGISTERING || state == REGISTERING | WAKING || state == WAKING),
         }
     }
 
