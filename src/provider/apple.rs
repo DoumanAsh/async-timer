@@ -20,7 +20,7 @@ mod ffi {
     pub const QOS_CLASS_DEFAULT: c_long = 0x15;
 
     extern "C" {
-        pub static SOURCE_TYPE_TIMER: c_long;
+        pub static _dispatch_source_type_timer: c_long;
 
         pub fn dispatch_get_global_queue(identifier: c_long, flags: c_ulong) -> dispatch_queue_t;
         pub fn dispatch_source_create(type_: dispatch_source_type_t, handle: uintptr_t, mask: c_ulong, queue: dispatch_queue_t) -> dispatch_source_t;
@@ -58,7 +58,7 @@ impl Timer for AppleTimer {
     fn new(state: *const TimerState) -> Self {
         let handle = unsafe {
             let queue = ffi::dispatch_get_global_queue(ffi::QOS_CLASS_DEFAULT, 0);
-            ffi::dispatch_source_create(&ffi::SOURCE_TYPE_TIMER as *const _ as ffi::dispatch_source_type_t, 0, 0, queue)
+            ffi::dispatch_source_create(&ffi::_dispatch_source_type_timer as *const _ as ffi::dispatch_source_type_t, 0, 0, queue)
         };
 
         assert!(!handle.is_null());
