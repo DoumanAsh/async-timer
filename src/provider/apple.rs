@@ -30,6 +30,7 @@ mod ffi {
         pub fn dispatch_resume(object: dispatch_object_t);
         pub fn dispatch_suspend(object: dispatch_object_t);
         pub fn dispatch_release(object: dispatch_object_t);
+        pub fn dispatch_source_cancel(object: dispatch_object_t);
         pub fn dispatch_time(when: dispatch_time_t, delta: int64_t) -> dispatch_time_t;
     }
 }
@@ -50,7 +51,8 @@ unsafe extern "C" fn interval_handler(context: *mut c_void) {
 pub struct AppleTimer {
     handle: ffi::dispatch_source_t,
     state: *const TimerState,
-    is_active: bool,
+    //Suspension count. Incremented suspend, and decremented on each resume
+    s_count: u8,
 }
 
 impl Timer for AppleTimer {
@@ -65,18 +67,21 @@ impl Timer for AppleTimer {
         Self {
             handle,
             state,
-            is_active: false,
+            //Source is created with suspension count 1
+            s_count: 1
         }
     }
 
     #[inline]
     fn reset(&mut self) {
-        if self.is_active {
+        //If count is 0 (active) then we suspend it
+        //in order to stop events
+        if self.s_count == 0 {
             unsafe {
                 ffi::dispatch_suspend(self.handle);
             }
 
-            self.is_active = false;
+            self.s_count += 1;
         }
     }
 
@@ -92,7 +97,7 @@ impl Timer for AppleTimer {
             ffi::dispatch_resume(self.handle);
         }
 
-        self.is_active = true;
+        self.s_count -= 1;
     }
 
     fn start_interval(&mut self, interval: time::Duration) {
@@ -107,7 +112,7 @@ impl Timer for AppleTimer {
             ffi::dispatch_resume(self.handle);
         }
 
-        self.is_active = true;
+        self.s_count -= 1;
     }
 
     fn state(&self) -> &TimerState {
@@ -120,8 +125,15 @@ impl Timer for AppleTimer {
 
 impl Drop for AppleTimer {
     fn drop(&mut self) {
-        self.reset();
         unsafe {
+            ffi::dispatch_source_cancel(self.handle);
+
+            if self.s_count > 0 {
+                //It is error to release while source is suspended
+                //So we decrement it
+                ffi::dispatch_resume(self.handle);
+            }
+
             ffi::dispatch_release(self.handle);
         }
     }
