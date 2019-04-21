@@ -30,7 +30,6 @@ mod ffi {
         pub fn dispatch_resume(object: dispatch_object_t);
         pub fn dispatch_suspend(object: dispatch_object_t);
         pub fn dispatch_release(object: dispatch_object_t);
-        pub fn dispatch_source_cancel(object: dispatch_source_t);
         pub fn dispatch_time(when: dispatch_time_t, delta: int64_t) -> dispatch_time_t;
     }
 }
@@ -91,9 +90,9 @@ impl Timer for AppleTimer {
             let start = ffi::dispatch_time(ffi::DISPATCH_TIME_NOW, timeout.as_nanos() as int64_t);
             ffi::dispatch_source_set_timer(self.handle, start, 0, 0);
             ffi::dispatch_resume(self.handle);
-
-            self.is_active = true;
         }
+
+        self.is_active = true;
     }
 
     fn start_interval(&mut self, interval: time::Duration) {
@@ -106,9 +105,9 @@ impl Timer for AppleTimer {
             let start = ffi::dispatch_time(ffi::DISPATCH_TIME_NOW, interval.as_nanos() as int64_t);
             ffi::dispatch_source_set_timer(self.handle, start, interval.as_nanos() as uint64_t, 0);
             ffi::dispatch_resume(self.handle);
-
-            self.is_active = true;
         }
+
+        self.is_active = true;
     }
 
     fn state(&self) -> &TimerState {
@@ -123,7 +122,6 @@ impl Drop for AppleTimer {
     fn drop(&mut self) {
         self.reset();
         unsafe {
-            ffi::dispatch_source_cancel(self.handle);
             ffi::dispatch_release(self.handle);
         }
     }
