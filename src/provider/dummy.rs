@@ -5,6 +5,8 @@ use crate::{TimerState, Timer};
 use core::time;
 
 ///Dummy timer.
+///
+///Holds no particular implementation and panics when used.
 pub struct DummyTimer {
 }
 

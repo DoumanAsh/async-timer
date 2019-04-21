@@ -1,4 +1,21 @@
 //! Async timer lib
+//!
+//! Provides `Timer` interface that can be used across various primitives of the crate.
+//!
+//! ## Timers
+//!
+//! Timer can be implemented through [Timer](trait.Timer.html) interface.
+//! By default library provides common implementations for various platforms which
+//! is available through [PlatformTimer](type.PlatformTimer.html) alias.
+//!
+//! If there is implementation for particular platform, then
+//! [DummyTimer](provider/dummy/struct.DummyTimer.html) is used.
+//! It panics in runtime
+//!
+//! ## Primitives
+//!
+//! - [Delay](delay/struct.Delay.html) - Provides future that resolves some time in future
+//! - [Timed](timed/struct.Timed.html) - A wrapper over future that allows to limit time for the future to resolve
 
 #![feature(futures_api)]
 
