@@ -37,8 +37,7 @@ impl Drop for TimerHandle {
     }
 }
 
-
-///Windows Native timer
+///Web Based timer
 pub struct WebTimer {
     handle: TimerHandle,
     state: *const TimerState,

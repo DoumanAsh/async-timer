@@ -30,18 +30,22 @@ pub use delay::Delay;
 pub use timed::Timed;
 
 #[cfg(windows)]
-///Windows timer alias
+///Windows timer alias.
 pub type PlatformTimer = provider::win::WinTimer;
 
 #[cfg(target_arch = "wasm32")]
-///Wasm Web based timer
+///Web based timer alias.
 pub type PlatformTimer = provider::web::WebTimer;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
-///Posix based timer.
+///Posix based timer alias.
 pub type PlatformTimer = provider::posix::PosixTimer;
 
-#[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android")))]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+///Apple based timer alias.
+pub type PlatformTimer = provider::apple::AppleTimer;
+
+#[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios")))]
 ///Dummy timer alias
 pub type PlatformTimer = provider::dummy::DummyTimer;
 
@@ -61,9 +65,13 @@ pub trait Timer: Send + Sync + Unpin {
     ///Starts timer as one-shot with specified timeout.
     ///
     ///After timer is expired, `TimerState` will remove registered waker, if any
+    ///
+    ///Cancels any non-expired jobs
     fn start_delay(&mut self, timeout: time::Duration);
 
     ///Starts timer as periodic with specified interval.
+    ///
+    ///Cancels any non-expired jobs
     fn start_interval(&mut self, interval: time::Duration);
 
     ///Accesses state

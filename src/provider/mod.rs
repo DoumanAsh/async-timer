@@ -15,5 +15,10 @@ pub mod posix;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub use posix::PosixTimer;
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+pub mod apple;
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+pub use apple::AppleTimer;
+
 pub mod dummy;
 pub use dummy::DummyTimer;
