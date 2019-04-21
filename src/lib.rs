@@ -37,7 +37,11 @@ pub type PlatformTimer = provider::win::WinTimer;
 ///Wasm Web based timer
 pub type PlatformTimer = provider::web::WebTimer;
 
-#[cfg(not(any(windows, target_arch = "wasm32")))]
+#[cfg(any(target_os = "linux", target_os = "android"))]
+///Posix based timer.
+pub type PlatformTimer = provider::posix::PosixTimer;
+
+#[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android")))]
 ///Dummy timer alias
 pub type PlatformTimer = provider::dummy::DummyTimer;
 

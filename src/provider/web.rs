@@ -31,6 +31,13 @@ impl TimerHandle {
     }
 }
 
+impl Drop for TimerHandle {
+    fn drop(&mut self) {
+        self.clear();
+    }
+}
+
+
 ///Windows Native timer
 pub struct WebTimer {
     handle: TimerHandle,
