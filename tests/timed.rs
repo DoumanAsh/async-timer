@@ -23,5 +23,5 @@ fn test_timed() {
     assert_eq!(diff.as_secs(), 4);
     //Windows note: Since we're using thread pool timer, it might cause some inaccuracy
     #[cfg(windows)]
-    assert!(diff.as_secs() >= 3 && diff.as_secs() <= 4);
+    assert!(diff.as_millis() >= 3_500 && diff.as_millis() <= 4_500);
 }

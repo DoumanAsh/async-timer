@@ -56,8 +56,8 @@ fn init() {
         sa_restorer: None,
     };
 
-    if unsafe { libc::sigaction(TIMER_SIG, &timer_sig, ptr::null_mut()) } == -1 {
-        panic!("error creating timer sigal handler!");
+    unsafe {
+        assert_ne!(libc::sigaction(TIMER_SIG, &timer_sig, ptr::null_mut()), -1);
     }
 
     let interval_sig = libc::sigaction {
@@ -68,8 +68,8 @@ fn init() {
         sa_restorer: None,
     };
 
-    if unsafe { libc::sigaction(INTERVAL_SIG, &interval_sig, ptr::null_mut()) } == -1 {
-        panic!("error creating timer sigal handler!");
+    unsafe {
+        assert_ne!(libc::sigaction(INTERVAL_SIG, &interval_sig, ptr::null_mut()), -1);
     }
 }
 
@@ -80,6 +80,9 @@ lazy_static::lazy_static! {
 }
 
 ///Posix Timer
+///
+///Currently implemented only for `Linux` and `Android` as BSD systems
+///proved to be a bit  problematic
 pub struct PosixTimer {
     handle: usize,
     state: *const TimerState,
@@ -99,9 +102,7 @@ impl PosixTimer {
         event.sigev_notify_thread_id = 0;
 
         unsafe {
-            if timer_create(CLOCK_MONOTONIC, &mut event, &mut self.handle) != 0 {
-                panic!("Failed to create timer using timer_create()");
-            }
+            assert_eq!(timer_create(CLOCK_MONOTONIC, &mut event, &mut self.handle), 0);
         }
     }
 
@@ -124,9 +125,7 @@ impl PosixTimer {
         self.init_raw_timer(signal, self.state);
 
         unsafe {
-            if timer_settime(self.handle, 0, &mut new_value, ptr::null_mut()) != 0 {
-                panic!("Error setting timeout");
-            }
+            assert_eq!(timer_settime(self.handle, 0, &mut new_value, ptr::null_mut()), 0);
         }
     }
 }
