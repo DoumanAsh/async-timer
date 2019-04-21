@@ -6,9 +6,9 @@ strategy:
     linux-nightly:
       imageName: 'ubuntu-16.04'
       rustup_toolchain: nightly
-      # mac-stable:
-      #   imageName: 'macos-10.13'
-      #   rustup_toolchain: stable
+    mac-nightly:
+      imageName: 'macos-10.13'
+      rustup_toolchain: nightly
 
 pool:
   vmImage: $(imageName)
