@@ -23,7 +23,7 @@ enum State<T> {
 ///The actual timer will start only after future will be initally polled.
 ///
 ///After timer expires, executor will be notified and next call to `Future::poll` shall
-///return `Ready`, after which all further calls to `Future::poll` result in `Pending`
+///return `Ready`, after which all further calls to `Future::poll` result in `Ready`
 ///without restarting timer.
 ///
 ///## Usage
