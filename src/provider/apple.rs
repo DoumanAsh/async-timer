@@ -56,7 +56,7 @@ pub struct AppleTimer {
 }
 
 impl Timer for AppleTimer {
-    fn new(state: *const TimerState) -> Self {
+    fn new() -> Self {
         let handle = unsafe {
             let queue = ffi::dispatch_get_global_queue(ffi::QOS_CLASS_DEFAULT, 0);
             ffi::dispatch_source_create(&ffi::_dispatch_source_type_timer as *const _ as ffi::dispatch_source_type_t, 0, 0, queue)
@@ -66,7 +66,7 @@ impl Timer for AppleTimer {
 
         Self {
             handle,
-            state,
+            state: Box::into_raw(Box::new(TimerState::new())),
             //Source is created with suspension count 1
             s_count: 1
         }
@@ -135,6 +135,7 @@ impl Drop for AppleTimer {
             }
 
             ffi::dispatch_release(self.handle);
+            Box::from_raw(self.state as *mut TimerState);
         }
     }
 }

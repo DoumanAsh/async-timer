@@ -11,7 +11,7 @@ pub struct DummyTimer {
 }
 
 impl Timer for DummyTimer {
-    fn new(_: *const TimerState) -> Self {
+    fn new() -> Self {
         unimplemented!()
     }
 

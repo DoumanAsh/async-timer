@@ -31,3 +31,7 @@ steps:
     displayName: Cargo check no_std
   - script: cargo test --all
     displayName: Cargo test
+
+  - script: cargo test --features romio_on
+    displayName: cargo test Linux timer fd
+    condition: eq( variables['Agent.OS'], 'Linux' )

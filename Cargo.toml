@@ -18,6 +18,8 @@ include = [
 default = []
 # Requires alloc
 no_std = []
+# Enables usage of romio
+romio_on = ["mio", "romio"]
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 libc = "0.2"
@@ -25,6 +27,8 @@ libc = "0.2"
 [target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
 libc = "0.2"
 lazy_static = "1"
+mio = { version = "0.6", optional = true }
+romio = { version = "0.3.0-alpha.5", optional = true }
 
 [target.'cfg(any(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen = "0.2"

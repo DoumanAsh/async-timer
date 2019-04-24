@@ -44,10 +44,10 @@ pub struct WebTimer {
 }
 
 impl Timer for WebTimer {
-    fn new(state: *const TimerState) -> Self {
+    fn new() -> Self {
         Self {
             handle: TimerHandle::None,
-            state,
+            state: Box::into_raw(Box::new(TimerState::new())),
         }
     }
 
@@ -91,6 +91,7 @@ impl Timer for WebTimer {
 impl Drop for WebTimer {
     fn drop(&mut self) {
         self.reset();
+        unsafe { Box::from_raw(self.state as *mut TimerState) };
     }
 }
 

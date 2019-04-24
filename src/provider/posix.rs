@@ -131,12 +131,12 @@ impl PosixTimer {
 }
 
 impl Timer for PosixTimer {
-    fn new(state: *const TimerState) -> Self {
+    fn new() -> Self {
         lazy_static::initialize(&RUNTIME);
 
         Self {
             handle: 0,
-            state,
+            state: Box::into_raw(Box::new(TimerState::new())),
         }
     }
 
@@ -173,6 +173,7 @@ impl Timer for PosixTimer {
 impl Drop for PosixTimer {
     fn drop(&mut self) {
         self.reset();
+        unsafe { Box::from_raw(self.state as *mut TimerState) };
     }
 }
 

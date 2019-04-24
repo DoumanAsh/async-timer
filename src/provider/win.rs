@@ -57,10 +57,10 @@ impl WinTimer {
 }
 
 impl Timer for WinTimer {
-    fn new(state: *const TimerState) -> Self {
+    fn new() -> Self {
         Self {
             timer: ptr::null_mut(),
-            state,
+            state: Box::into_raw(Box::new(TimerState::new())),
         }
     }
 
@@ -113,5 +113,6 @@ impl Timer for WinTimer {
 impl Drop for WinTimer {
     fn drop(&mut self) {
         self.reset();
+        unsafe { Box::from_raw(self.state as *mut TimerState) };
     }
 }

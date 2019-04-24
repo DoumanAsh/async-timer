@@ -25,8 +25,10 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::style))]
 
 #[cfg(feature = "no_std")]
+#[allow(unused)]
 extern crate alloc;
 #[cfg(not(feature = "no_std"))]
+#[allow(unused)]
 use std as alloc;
 
 use core::{task, time};
@@ -54,9 +56,13 @@ pub type PlatformTimer = provider::win::WinTimer;
 ///Web based timer alias.
 pub type PlatformTimer = provider::web::WebTimer;
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(all(not(feature = "romio_on"), any(target_os = "linux", target_os = "android")))]
 ///Posix based timer alias.
 pub type PlatformTimer = provider::posix::PosixTimer;
+
+#[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
+///Linux implementation based on `timerfd`
+pub type PlatformTimer = provider::timer_fd::TimerFd;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 ///Apple based timer alias.
@@ -74,7 +80,7 @@ pub trait Timer: Send + Sync + Unpin {
     ///due to it being managed by abstraction that uses `Timer`
     ///It must be valid non-null pointer and is intended to be used with callbacks
     ///that accept pointer for user's provided data
-    fn new(state: *const TimerState) -> Self;
+    fn new() -> Self;
 
     ///Resets timer, and cancells ongoing work, if necessary
     fn reset(&mut self);
@@ -98,5 +104,13 @@ pub trait Timer: Send + Sync + Unpin {
     ///Registers waker with `Timer`
     fn register_waker(&self, waker: &task::Waker) {
         self.state().register(waker)
+    }
+
+    ///Performs poll of `Timer`
+    fn poll(&mut self, _: &mut task::Context) -> task::Poll<()> {
+        match self.state().is_done() {
+            true => task::Poll::Ready(()),
+            false => task::Poll::Pending,
+        }
     }
 }
