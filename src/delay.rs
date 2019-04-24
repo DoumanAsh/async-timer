@@ -39,7 +39,7 @@ pub struct Delay<T=PlatformTimer> {
 impl Delay {
     ///Creates new instance using [PlatformTimer](../type.PlatformTimer.html)
     pub fn platform_new(timeout: time::Duration) -> Self {
-        Delay::<F, PlatformTimer>::new(timeout)
+        Delay::<PlatformTimer>::new(timeout)
     }
 }
 
