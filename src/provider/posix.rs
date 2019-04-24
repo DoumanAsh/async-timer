@@ -3,6 +3,7 @@
 use core::{mem, ptr, time};
 
 use crate::{TimerState, Timer};
+use crate::alloc::boxed::Box;
 
 use libc::{c_int, c_void, clockid_t, siginfo_t, suseconds_t, time_t, timespec, CLOCK_MONOTONIC};
 

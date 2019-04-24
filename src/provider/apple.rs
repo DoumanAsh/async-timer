@@ -3,6 +3,7 @@
 use core::{time};
 
 use crate::{TimerState, Timer};
+use crate::alloc::boxed::Box;
 
 use libc::{c_long, c_ulong, c_void, int64_t, uint64_t, uintptr_t};
 

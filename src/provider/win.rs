@@ -1,6 +1,7 @@
 //! Windows Native Timer
 
 use crate::{TimerState, Timer};
+use crate::alloc::boxed::Box;
 
 use core::{time, ptr};
 

@@ -3,6 +3,7 @@
 use core::{time};
 
 use crate::{TimerState, Timer};
+use crate::alloc::boxed::Box;
 
 #[wasm_bindgen::prelude::wasm_bindgen]
 extern "C" {
