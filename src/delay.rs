@@ -83,23 +83,18 @@ impl<T: Timer> Future for Delay<T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        self.state = match &mut self.state {
-            State::Init => {
-                let mut timer = T::new();
+        loop {
+            self.state = match &mut self.state {
+                State::Init => {
+                    let mut timer = T::new();
 
-                timer.register_waker(ctx.waker());
-                timer.start_delay(self.timeout);
+                    timer.register_waker(ctx.waker());
+                    timer.start_delay(self.timeout);
 
-                match timer.poll(ctx) {
-                    task::Poll::Ready(_) => return task::Poll::Ready(()),
-                    _ => (),
-                }
-
-                State::Active(timer)
-            },
-            State::Active(ref mut timer) => return timer.poll(ctx).map(|_| ()),
-        };
-
-        task::Poll::Pending
+                    State::Active(timer)
+                },
+                State::Active(ref mut timer) => return timer.poll(ctx).map(|_| ()),
+            };
+        }
     }
 }
