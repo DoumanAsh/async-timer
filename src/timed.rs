@@ -26,6 +26,8 @@ impl<F, T: Timer> Timed<F, T> {
     ///
     ///Requires to specify `Timer` type (e.g. `Timed::<PlatformTimer>::new()`)
     pub fn new(inner: F, timeout: time::Duration) -> Self {
+        debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
+
         Self {
             state: Some((inner, Delay::<T>::new(timeout))),
         }

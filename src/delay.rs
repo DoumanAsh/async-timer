@@ -42,6 +42,8 @@ pub struct Delay<T=PlatformTimer> {
 impl Delay {
     ///Creates new instance using [PlatformTimer](../type.PlatformTimer.html)
     pub fn platform_new(timeout: time::Duration) -> Self {
+        debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
+
         Self {
             timeout,
             state: State::Init,
