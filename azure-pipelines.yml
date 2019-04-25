@@ -1,14 +1,14 @@
 strategy:
   matrix:
-    windows-nighly:
-      imageName: 'vs2017-win2016'
-      rustup_toolchain: nightly
     linux-nightly:
       imageName: 'ubuntu-16.04'
       rustup_toolchain: nightly
-    mac-nightly:
-      imageName: 'macos-10.13'
-      rustup_toolchain: nightly
+      #windows-nighly:
+      #wiimageName: 'vs2017-win2016'
+      #wirustup_toolchain: nightly
+      #mac-nightly:
+      #maimageName: 'macos-10.13'
+      #marustup_toolchain: nightly
 
 pool:
   vmImage: $(imageName)
@@ -32,6 +32,6 @@ steps:
   - script: cargo test --all
     displayName: Cargo test
 
-  - script: cargo test --features romio_on
-    displayName: cargo test Linux timer fd
-    condition: eq( variables['Agent.OS'], 'Linux' )
+    #- script: cargo test --features romio_on
+    #- displayName: cargo test Linux timer fd
+    #- condition: eq( variables['Agent.OS'], 'Linux' )

@@ -1,13 +1,11 @@
-#![feature(async_await, await_macro, futures_api)]
-
-use async_timer::{Delay};
+use async_timer::oneshot::{Oneshot, Timer};
 use futures::executor::block_on;
 
 use std::time;
 
 #[test]
-fn test_delay() {
-    let work = Delay::platform_new(time::Duration::from_secs(2));
+fn test_oneshot() {
+    let work = Timer::new(time::Duration::from_secs(2));
 
     let before = time::SystemTime::now();
     block_on(work);
