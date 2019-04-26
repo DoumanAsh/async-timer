@@ -6,9 +6,9 @@ strategy:
     windows-nighly:
       imageName: 'vs2017-win2016'
       rustup_toolchain: nightly
-      #mac-nightly:
-      #imageName: 'macos-10.13'
-      #rustup_toolchain: nightly
+    mac-nightly:
+      imageName: 'macos-10.13'
+      rustup_toolchain: nightly
 
 pool:
   vmImage: $(imageName)

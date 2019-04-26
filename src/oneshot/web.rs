@@ -1,7 +1,6 @@
 //! Web based timer
 
 use core::{task, time};
-
 use core::pin::Pin;
 use core::future::Future;
 

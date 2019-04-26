@@ -29,6 +29,8 @@ pub mod web;
 pub mod win;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub mod posix;
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+pub mod apple;
 #[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
 pub mod timer_fd;
 #[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios")))]
@@ -51,6 +53,10 @@ pub type Timer = posix::PosixTimer;
 #[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
 ///Alias to Linux `timerfd` Timer
 pub type Timer = timer_fd::TimerFd;
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+///Alias to Apple Timer
+pub type Timer = apple::AppleTimer;
 
 #[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios")))]
 ///Dummy Timer
