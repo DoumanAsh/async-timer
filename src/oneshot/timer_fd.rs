@@ -120,8 +120,10 @@ impl Future for TimerFd {
                     task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("timerfd cannot be ready") {
                         true => {
                             let _ = Pin::new(&mut self.fd).clear_read_ready(ctx);
-                            let _ = self.fd.get_mut().read();
-                            return task::Poll::Ready(())
+                            match self.fd.get_mut().read() {
+                                0 => return task::Poll::Pending,
+                                _ => return task::Poll::Ready(()),
+                            }
                         },
                         false => return task::Poll::Pending,
                     }

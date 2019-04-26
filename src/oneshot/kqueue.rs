@@ -1,7 +1,7 @@
 //! Timer based on `kqueue`
 
 #[cfg(feature = "no_std")]
-core::compile_error!("no_std is not supported for timerfd implementation");
+core::compile_error!("no_std is not supported for kqueue implementation");
 
 use core::{task, time};
 use core::pin::Pin;
@@ -85,10 +85,6 @@ enum State {
     Running,
 }
 
-fn set_timer_value(fd: &RawTimer, timeout: &time::Duration) {
-    fd.set(timeout);
-}
-
 ///Timer based on `kqueue`
 pub struct KqueueTimer {
     fd: romio::raw::PollEvented<RawTimer>,
@@ -117,7 +113,7 @@ impl super::Oneshot for KqueueTimer {
                 *timeout = new_value.clone()
             },
             State::Running => {
-                set_timer_value(&self.fd.get_ref(), new_value);
+                self.fd.get_ref().set(new_value);
             },
         }
     }
@@ -130,16 +126,18 @@ impl Future for KqueueTimer {
         loop {
             self.state = match &self.state {
                 State::Init(ref timeout) => {
-                    set_timer_value(self.fd.get_ref(), timeout);
+                    self.fd.get_ref().set(timeout);
                     State::Running
                 },
                 State::Running => match Pin::new(&mut self.fd).poll_read_ready(ctx) {
                     task::Poll::Pending => return task::Poll::Pending,
-                    task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("timerfd cannot be ready") {
+                    task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("kqueue cannot be ready") {
                         true => {
                             let _ = Pin::new(&mut self.fd).clear_read_ready(ctx);
-                            let _ = self.fd.get_mut().read();
-                            return task::Poll::Ready(())
+                            match self.fd.get_mut().read() {
+                                0 => return task::Poll::Pending,
+                                _ => return task::Poll::Ready(()),
+                            }
                         },
                         false => return task::Poll::Pending,
                     }
