@@ -20,10 +20,19 @@ pub trait Oneshot: Send + Sync + Unpin + Future {
     fn restart(&mut self, timeout: &time::Duration, waker: &task::Waker);
 }
 
+#[cfg(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios"))]
 mod state;
 
+#[cfg(windows)]
+pub mod win;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub mod posix;
+#[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios")))]
+pub mod dummy;
+
+#[cfg(windows)]
+///Alias to Windows Timer
+pub type Timer = win::WinTimer;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 ///Alias to Posix Timer
@@ -31,4 +40,4 @@ pub type Timer = posix::PosixTimer;
 
 #[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios")))]
 ///Dummy Timer
-pub type DummyTimer = posix::PosixTimer;
+pub type Timer = dummy::DummyTimer;
