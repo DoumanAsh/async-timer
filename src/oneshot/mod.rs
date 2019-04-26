@@ -5,6 +5,40 @@ use core::marker::Unpin;
 use core::future::Future;
 
 ///One-shot timer that expires once
+///
+///Trait itself describes `Future` that resolves after `timeout`
+///
+///Most common platforms are supplied via alias [Timer](type.Timer.html)
+///
+///## Common implementations:
+///
+///- Windows uses thread pooled timer
+///- Apple systems uses dispatch source API
+///- Posix compatible `timer_create`, currently available only on Linux systems
+///- Wasm uses Web API `SetTimeout`
+///- Dummy timer is used  when no implementation is available. Panics when used.
+///
+///## Feature `romio_on`
+///
+///- Linux uses `timerfd_create`, replaces Posix tiemr when enabled.
+///- Other unix systems uses `kqueue`, replaces Apple timer when enabled.
+///
+///```rust, no_run
+/// use async_timer::oneshot::{Oneshot, Timer};
+/// use futures::executor::block_on;
+///
+/// use std::time;
+///
+/// let work = Timer::new(time::Duration::from_secs(2));
+///
+/// let before = time::SystemTime::now();
+/// block_on(work);
+/// let after = time::SystemTime::now();
+/// let diff = after.duration_since(before).unwrap();
+///
+/// assert_eq!(diff.as_secs(), 2);
+///
+///```
 pub trait Oneshot: Send + Sync + Unpin + Future<Output=()> {
     ///Creates new instance without actually starting timer.
     ///

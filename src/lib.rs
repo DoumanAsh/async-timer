@@ -1,5 +1,16 @@
 //! Async timer lib
-
+//!
+//! ## Timers
+//!
+//! - [Oneshot](oneshot/trait.Oneshot.html) interface to one-shot [Timer](oneshot/type.Timer.html)
+//!
+//! ## Primitives
+//!
+//! - [Timed](timed/struct.Timed.html) - A wrapper over future that allows to limit time for the future to resolve
+//!
+//! ## Features
+//!
+//! - `romio_on` - Enables implementations that require platform's event loop
 #![warn(missing_docs)]
 
 #![cfg_attr(feature = "no_std", no_std)]
