@@ -5,7 +5,7 @@ use core::marker::Unpin;
 use core::future::Future;
 
 ///One-shot timer that expires once
-pub trait Oneshot: Send + Sync + Unpin + Future {
+pub trait Oneshot: Send + Sync + Unpin + Future<Output=()> {
     ///Creates new instance without actually starting timer.
     ///
     ///Timer should start only on first `Future::poll`
