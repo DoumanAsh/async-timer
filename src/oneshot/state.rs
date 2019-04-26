@@ -89,26 +89,22 @@ impl AtomicWaker {
     }
 
     fn is_registered(&self) -> bool {
-        unsafe { (*self.waker.get()).is_some() }
+        match self.state.fetch_or(WAKING, AcqRel) {
+            WAITING => {
+                let res = unsafe { (*self.waker.get()).is_some() };
+                self.state.fetch_and(!WAKING, Release);
+                res
+            }
+            state => {
+                debug_assert!(state == REGISTERING || state == REGISTERING | WAKING || state == WAKING);
+                true
+            }
+        }
     }
 
     fn wake(&self) {
         if let Some(waker) = self.take() {
             waker.wake();
-        }
-    }
-
-    fn wake_by_ref(&self) {
-        //See take below
-        match self.state.fetch_or(WAKING, AcqRel) {
-            WAITING => {
-                if let Some(waker) = unsafe { (*self.waker.get()).as_ref() } {
-                    waker.wake_by_ref();
-                }
-
-                self.state.fetch_and(!WAKING, Release);
-            }
-            state => debug_assert!(state == REGISTERING || state == REGISTERING | WAKING || state == WAKING),
         }
     }
 
@@ -183,11 +179,5 @@ impl TimerState {
     ///After that `Waker` is no longer registered with `TimerState`
     pub fn wake(&self) {
         self.inner.wake();
-    }
-
-    #[inline]
-    ///Notifies underlying `Waker` without consuming it
-    pub fn wake_by_ref(&self) {
-        self.inner.wake_by_ref();
     }
 }
