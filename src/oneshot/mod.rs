@@ -23,6 +23,8 @@ pub trait Oneshot: Send + Sync + Unpin + Future {
 #[cfg(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios"))]
 mod state;
 
+#[cfg(target_arch = "wasm32")]
+pub mod web;
 #[cfg(windows)]
 pub mod win;
 #[cfg(any(target_os = "linux", target_os = "android"))]
