@@ -33,6 +33,8 @@ pub mod posix;
 pub mod apple;
 #[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
 pub mod timer_fd;
+#[cfg(all(feature = "romio_on", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
+pub mod kqueue;
 #[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios")))]
 pub mod dummy;
 
@@ -54,9 +56,12 @@ pub type Timer = posix::PosixTimer;
 ///Alias to Linux `timerfd` Timer
 pub type Timer = timer_fd::TimerFd;
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(all(not(feature = "romio_on"), any(target_os = "macos", target_os = "ios")))]
 ///Alias to Apple Timer
 pub type Timer = apple::AppleTimer;
+#[cfg(all(feature = "romio_on", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
+///Alias to `kqueue` based Timer
+pub type Timer = kqueue::KqueueTimer;
 
 #[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios")))]
 ///Dummy Timer
