@@ -27,8 +27,16 @@ impl RawTimer {
 
     fn read(&self) -> usize {
         let mut read_num = 0u64;
-        let _ = unsafe { libc::read(self.0, &mut read_num as *mut u64 as *mut _, 8) };
-        read_num as usize
+        match unsafe { libc::read(self.0, &mut read_num as *mut u64 as *mut _, 8) } {
+            -1 => {
+                let error = io::Error::last_os_error();
+                match error.kind() {
+                    io::ErrorKind::WouldBlock => 0,
+                    _ => panic!("Unexpected read error: {}", error),
+                }
+            },
+            _ => read_num as usize,
+        }
     }
 }
 
