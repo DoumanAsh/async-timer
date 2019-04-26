@@ -15,3 +15,7 @@ use std as alloc;
 #[macro_use]
 mod utils;
 pub mod oneshot;
+pub mod timed;
+
+pub use oneshot::Oneshot;
+pub use timed::Timed;
