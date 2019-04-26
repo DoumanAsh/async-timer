@@ -33,5 +33,5 @@ steps:
     displayName: Cargo test
 
   - script: cargo test --features romio_on
-    displayName: cargo test Linux timer fd
+    displayName: cargo test Event loop timer
     condition: or( eq(variables['Agent.OS'], 'Darwin'), eq(variables['Agent.OS'], 'Linux') )

@@ -20,7 +20,6 @@ pub trait Oneshot: Send + Sync + Unpin + Future<Output=()> {
     fn restart(&mut self, timeout: &time::Duration, waker: &task::Waker);
 }
 
-#[cfg(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios"))]
 mod state;
 
 #[cfg(target_arch = "wasm32")]
@@ -35,7 +34,10 @@ pub mod apple;
 pub mod timer_fd;
 #[cfg(all(feature = "romio_on", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
 pub mod kqueue;
-#[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios")))]
+#[cfg(not(any(
+windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios",
+all(feature = "romio_on", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))
+)))]
 pub mod dummy;
 
 #[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
@@ -63,6 +65,9 @@ pub type Timer = apple::AppleTimer;
 ///Alias to `kqueue` based Timer
 pub type Timer = kqueue::KqueueTimer;
 
-#[cfg(not(any(windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios")))]
+#[cfg(not(any(
+windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios",
+all(feature = "romio_on", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))
+)))]
 ///Dummy Timer
 pub type Timer = dummy::DummyTimer;
