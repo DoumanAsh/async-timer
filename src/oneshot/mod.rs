@@ -37,6 +37,10 @@ pub mod dummy;
 #[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
 pub use timer_fd::TimerFd;
 
+#[cfg(target_arch = "wasm32")]
+///Alias to Web based Timer.
+pub type Timer = web::WebTimer;
+
 #[cfg(windows)]
 ///Alias to Windows Timer
 pub type Timer = win::WinTimer;
