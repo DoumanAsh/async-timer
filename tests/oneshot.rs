@@ -20,7 +20,7 @@ fn test_tons_oneshot() {
     const NUM: usize = 1024;
     let mut jobs = Vec::with_capacity(NUM);
 
-    for idx in 0..NUM {
+    for _ in 0..NUM {
         jobs.push(Timer::new(time::Duration::from_secs(2)));
     }
 
