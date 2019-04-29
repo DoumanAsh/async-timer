@@ -21,11 +21,7 @@ fn test_tons_oneshot() {
     let mut jobs = Vec::with_capacity(NUM);
 
     for idx in 0..NUM {
-        if idx % 2 == 0 {
-            jobs.push(Timer::new(time::Duration::from_secs(2)));
-        } else {
-            jobs.push(Timer::new(time::Duration::from_secs(1)));
-        }
+        jobs.push(Timer::new(time::Duration::from_secs(2)));
     }
 
     let before = time::SystemTime::now();
