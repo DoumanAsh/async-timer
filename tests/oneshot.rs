@@ -31,3 +31,15 @@ fn test_tons_oneshot() {
 
     assert!(diff.as_millis() >= 1_500 && diff.as_millis() <= 2_500);
 }
+
+#[test]
+fn test_smol_oneshot() {
+    let work = Timer::new(time::Duration::from_millis(500));
+
+    let before = time::SystemTime::now();
+    block_on(work);
+    let after = time::SystemTime::now();
+    let diff = after.duration_since(before).unwrap();
+
+    assert!(diff.as_millis() >= 250 && diff.as_millis() <= 750);
+}
