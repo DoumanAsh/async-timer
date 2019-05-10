@@ -73,6 +73,9 @@ windows, target_arch = "wasm32", target_os = "linux", target_os = "android", tar
 all(feature = "romio_on", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))
 )))]
 pub mod dummy;
+mod extra;
+
+pub use extra::NeverTimer;
 
 #[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
 pub use timer_fd::TimerFd;
