@@ -14,7 +14,7 @@ pub struct Timed<F, T=PlatformTimer> {
     state: Option<(F, T)>,
 }
 
-impl<F> Timed<F> {
+impl<F: Unpin> Timed<F> {
     #[inline]
     ///Creates new instance using [Timer](../oneshot//type.Timer.html) alias.
     pub fn platform_new(inner: F, timeout: time::Duration) -> Self {
@@ -22,11 +22,35 @@ impl<F> Timed<F> {
     }
 }
 
-impl<F, T: Oneshot> Timed<F, T> {
+impl<F> Timed<F> {
+    #[inline]
+    ///Creates new instance using [Timer](../oneshot//type.Timer.html) alias.
+    ///
+    ///Unsafe version of `platform_new` that doesn't require `Unpin`.
+    pub unsafe fn platform_new_unchecked(inner: F, timeout: time::Duration) -> Self {
+        Timed::<F, PlatformTimer>::new_unchecked(inner, timeout)
+    }
+}
+
+impl<F: Unpin, T: Oneshot> Timed<F, T> {
     ///Creates new instance with specified timeout
     ///
     ///Requires to specify `Oneshot` type (e.g. `Timed::<oneshoot::Timer>::new()`)
     pub fn new(inner: F, timeout: time::Duration) -> Self {
+        Self {
+            timeout: timeout.clone(),
+            state: Some((inner, T::new(timeout))),
+        }
+    }
+}
+
+impl<F, T: Oneshot> Timed<F, T> {
+    ///Creates new instance with specified timeout
+    ///
+    ///Unsafe version of `new` that doesn't require `Unpin`.
+    ///
+    ///Requires to specify `Oneshot` type (e.g. `Timed::<oneshoot::Timer>::new()`)
+    pub unsafe fn new_unchecked(inner: F, timeout: time::Duration) -> Self {
         Self {
             timeout: timeout.clone(),
             state: Some((inner, T::new(timeout))),
@@ -41,26 +65,28 @@ impl<F, T: Oneshot> Timed<F, T> {
     }
 }
 
-impl<F: Future + Unpin, T: Oneshot> Future for Timed<F, T> {
+impl<F: Future, T: Oneshot> Future for Timed<F, T> {
     type Output = Result<F::Output, Expired<F, T>>;
 
-    fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        let inner = unsafe { self.as_mut().map_unchecked_mut(|this| &mut this.state().0) };
-        match Future::poll(inner, ctx) {
+    fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
+        let this = unsafe { self.get_unchecked_mut() };
+
+        match Future::poll(unsafe { Pin::new_unchecked(&mut this.state().0) }, ctx) {
             task::Poll::Pending => (),
             task::Poll::Ready(result) => return task::Poll::Ready(Ok(result)),
         }
 
-        let delay = unsafe { self.as_mut().map_unchecked_mut(|this| &mut this.state().1) };
-        match Future::poll(delay, ctx) {
+        match Future::poll(Pin::new(&mut this.state().1), ctx) {
             task::Poll::Pending => task::Poll::Pending,
             task::Poll::Ready(_) => return task::Poll::Ready(Err(Expired {
-                timeout: self.timeout.clone(),
-                state: self.state.take()
+                timeout: this.timeout.clone(),
+                state: this.state.take()
             }))
         }
     }
 }
+
+impl<F: Future + Unpin, T: Oneshot> Unpin for Timed<F, T> {}
 
 ///Error when [Timed](struct.Timed.html) expires
 ///
@@ -81,15 +107,17 @@ impl<F, T> Expired<F, T> {
     }
 }
 
-impl<F: Future + Unpin, T: Oneshot> Future for Expired<F, T> {
+impl<F: Future, T: Oneshot> Future for Expired<F, T> {
     type Output = Timed<F, T>;
 
-    fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        match self.state.take() {
+    fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
+        let this = unsafe { self.get_unchecked_mut() };
+
+        match this.state.take() {
             Some((inner, mut delay)) => {
-                delay.restart(&self.timeout, ctx.waker());
+                delay.restart(&this.timeout, ctx.waker());
                 task::Poll::Ready(Timed::<F, T> {
-                    timeout: self.timeout.clone(),
+                    timeout: this.timeout.clone(),
                     state: Some((inner, delay)),
                 })
             },
@@ -97,6 +125,9 @@ impl<F: Future + Unpin, T: Oneshot> Future for Expired<F, T> {
         }
     }
 }
+
+
+impl<F: Future + Unpin, T: Oneshot> Unpin for Expired<F, T> {}
 
 #[cfg(not(feature = "no_std"))]
 impl<F, T: Oneshot> std::error::Error for Expired<F, T> {}
