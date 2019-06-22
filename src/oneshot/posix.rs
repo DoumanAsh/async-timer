@@ -90,7 +90,7 @@ fn time_create(state: *mut TimerState) -> RawFd {
 fn set_timer_value(fd: RawFd, timeout: &time::Duration) {
     let it_value = libc::timespec {
         tv_sec: timeout.as_secs() as libc::time_t,
-        tv_nsec: timeout.subsec_nanos() as libc::suseconds_t,
+        tv_nsec: libc::suseconds_t::from(timeout.subsec_nanos()),
     };
 
     let new_value = ffi::itimerspec {
@@ -140,7 +140,7 @@ impl super::Oneshot for PosixTimer {
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = new_value.clone()
+                *timeout = *new_value;
             },
             State::Running(fd, ref mut state) => {
                 state.register(waker);

@@ -110,7 +110,7 @@ impl super::Oneshot for KqueueTimer {
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = new_value.clone()
+                *timeout = *new_value;
             },
             State::Running => {
                 self.fd.get_ref().set(new_value);

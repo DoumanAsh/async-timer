@@ -38,7 +38,7 @@ impl<F: Unpin, T: Oneshot> Timed<F, T> {
     ///Requires to specify `Oneshot` type (e.g. `Timed::<oneshoot::Timer>::new()`)
     pub fn new(inner: F, timeout: time::Duration) -> Self {
         Self {
-            timeout: timeout.clone(),
+            timeout,
             state: Some((inner, T::new(timeout))),
         }
     }
@@ -52,7 +52,7 @@ impl<F, T: Oneshot> Timed<F, T> {
     ///Requires to specify `Oneshot` type (e.g. `Timed::<oneshoot::Timer>::new()`)
     pub unsafe fn new_unchecked(inner: F, timeout: time::Duration) -> Self {
         Self {
-            timeout: timeout.clone(),
+            timeout,
             state: Some((inner, T::new(timeout))),
         }
     }
@@ -79,7 +79,7 @@ impl<F: Future, T: Oneshot> Future for Timed<F, T> {
         match Future::poll(Pin::new(&mut this.state().1), ctx) {
             task::Poll::Pending => task::Poll::Pending,
             task::Poll::Ready(_) => return task::Poll::Ready(Err(Expired {
-                timeout: this.timeout.clone(),
+                timeout: this.timeout,
                 state: this.state.take()
             }))
         }
@@ -117,7 +117,7 @@ impl<F: Future, T: Oneshot> Future for Expired<F, T> {
             Some((inner, mut delay)) => {
                 delay.restart(&this.timeout, ctx.waker());
                 task::Poll::Ready(Timed::<F, T> {
-                    timeout: this.timeout.clone(),
+                    timeout: this.timeout,
                     state: Some((inner, delay)),
                 })
             },

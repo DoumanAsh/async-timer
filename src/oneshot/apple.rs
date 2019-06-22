@@ -7,7 +7,7 @@ use core::future::Future;
 use super::state::TimerState;
 use crate::alloc::boxed::Box;
 
-use libc::{c_long, c_ulong, c_void, int64_t, uint64_t, uintptr_t};
+use libc::{c_long, c_ulong, c_void, uintptr_t};
 
 #[allow(non_camel_case_types)]
 mod ffi {
@@ -17,7 +17,7 @@ mod ffi {
     pub type dispatch_queue_t = *const c_void;
     pub type dispatch_source_t = *const c_void;
     pub type dispatch_source_type_t = *const c_void;
-    pub type dispatch_time_t = uint64_t;
+    pub type dispatch_time_t = u64;
 
     pub const DISPATCH_TIME_NOW: dispatch_time_t = 0;
     pub const QOS_CLASS_DEFAULT: c_long = 0x15;
@@ -27,14 +27,14 @@ mod ffi {
 
         pub fn dispatch_get_global_queue(identifier: c_long, flags: c_ulong) -> dispatch_queue_t;
         pub fn dispatch_source_create(type_: dispatch_source_type_t, handle: uintptr_t, mask: c_ulong, queue: dispatch_queue_t) -> dispatch_source_t;
-        pub fn dispatch_source_set_timer(source: dispatch_source_t, start: dispatch_time_t, interval: uint64_t, leeway: uint64_t);
+        pub fn dispatch_source_set_timer(source: dispatch_source_t, start: dispatch_time_t, interval: u64, leeway: u64);
         pub fn dispatch_source_set_event_handler_f(source: dispatch_source_t, handler: unsafe extern "C" fn(*mut c_void));
         pub fn dispatch_set_context(object: dispatch_object_t, context: *mut c_void);
         pub fn dispatch_resume(object: dispatch_object_t);
         pub fn dispatch_suspend(object: dispatch_object_t);
         pub fn dispatch_release(object: dispatch_object_t);
         pub fn dispatch_source_cancel(object: dispatch_object_t);
-        pub fn dispatch_time(when: dispatch_time_t, delta: int64_t) -> dispatch_time_t;
+        pub fn dispatch_time(when: dispatch_time_t, delta: i64) -> dispatch_time_t;
     }
 }
 
@@ -109,7 +109,7 @@ impl TimerHandle {
         self.suspend();
 
         unsafe {
-            let start = ffi::dispatch_time(ffi::DISPATCH_TIME_NOW, timeout.as_nanos() as int64_t);
+            let start = ffi::dispatch_time(ffi::DISPATCH_TIME_NOW, timeout.as_nanos() as i64);
             ffi::dispatch_source_set_timer(self.inner, start, 0, 0);
         }
 
@@ -151,7 +151,7 @@ impl super::Oneshot for AppleTimer {
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = new_value.clone()
+                *timeout = *new_value;
             },
             State::Running(ref mut fd, ref state) => {
                 state.register(waker);

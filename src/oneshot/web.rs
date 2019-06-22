@@ -9,7 +9,7 @@ use crate::alloc::boxed::Box;
 
 #[wasm_bindgen::prelude::wasm_bindgen]
 extern "C" {
-    fn setTimeout(closure: &wasm_bindgen::closure::Closure<FnMut()>, time: u32) -> i32;
+    fn setTimeout(closure: &wasm_bindgen::closure::Closure<dyn FnMut()>, time: u32) -> i32;
     fn clearTimeout(id: i32);
 }
 
@@ -72,7 +72,7 @@ impl super::Oneshot for WebTimer {
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = new_value.clone()
+                *timeout = *new_value
             },
             State::Running(ref mut fd, ref state) => {
                 unsafe { (**state).register(waker) };

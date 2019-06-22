@@ -81,7 +81,7 @@ impl super::Oneshot for WinTimer {
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = new_value.clone()
+                *timeout = *new_value;
             },
             State::Running(fd, ref mut state) => {
                 state.register(waker);

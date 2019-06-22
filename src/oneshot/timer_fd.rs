@@ -68,7 +68,7 @@ enum State {
 fn set_timer_value(fd: &RawTimer, timeout: &time::Duration) {
     let it_value = libc::timespec {
         tv_sec: timeout.as_secs() as libc::time_t,
-        tv_nsec: timeout.subsec_nanos() as libc::suseconds_t,
+        tv_nsec: libc::suseconds_t::from(timeout.subsec_nanos()),
     };
 
     let new_value = libc::itimerspec {
@@ -104,7 +104,7 @@ impl super::Oneshot for TimerFd {
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = new_value.clone()
+                *timeout = *new_value;
             },
             State::Running => {
                 set_timer_value(&self.fd.get_ref(), new_value);
