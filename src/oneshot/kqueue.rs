@@ -82,7 +82,7 @@ impl Drop for RawTimer {
 
 enum State {
     Init(time::Duration),
-    Running,
+    Running(bool),
 }
 
 ///Timer based on `kqueue`
@@ -101,6 +101,13 @@ impl super::Oneshot for KqueueTimer {
         }
     }
 
+    fn is_expired(&self) -> bool {
+        match &self.state {
+            State::Init(_) => false,
+            State::Running(is_finished) => *is_finished,
+        }
+    }
+
     fn cancel(&mut self) {
         self.fd.get_mut().unset();
     }
@@ -112,7 +119,8 @@ impl super::Oneshot for KqueueTimer {
             State::Init(ref mut timeout) => {
                 *timeout = *new_value;
             },
-            State::Running => {
+            State::Running(ref mut is_finished) => {
+                *is_finished = false;
                 self.fd.get_ref().set(new_value);
             },
         }
@@ -127,9 +135,9 @@ impl Future for KqueueTimer {
             self.state = match &self.state {
                 State::Init(ref timeout) => {
                     self.fd.get_ref().set(timeout);
-                    State::Running
+                    State::Running(false)
                 },
-                State::Running => match Pin::new(&mut self.fd).poll_read_ready(ctx) {
+                State::Running(false) => match Pin::new(&mut self.fd).poll_read_ready(ctx) {
                     task::Poll::Pending => return task::Poll::Pending,
                     task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("kqueue cannot be ready") {
                         true => {
@@ -142,6 +150,7 @@ impl Future for KqueueTimer {
                         false => return task::Poll::Pending,
                     }
                 },
+                State::Running(true) => return task::Poll::Ready(()),
             }
         }
     }

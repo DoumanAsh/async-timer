@@ -6,6 +6,7 @@ use std::time;
 #[test]
 fn test_oneshot() {
     let work = Timer::new(time::Duration::from_secs(2));
+    assert!(!work.is_expired());
 
     let before = time::SystemTime::now();
     block_on(work);
@@ -13,6 +14,7 @@ fn test_oneshot() {
     let diff = after.duration_since(before).unwrap();
 
     assert!(diff.as_millis() >= 1_500 && diff.as_millis() <= 2_500);
+
 }
 
 #[test]
@@ -35,6 +37,7 @@ fn test_tons_oneshot() {
 #[test]
 fn test_smol_oneshot() {
     let work = Timer::new(time::Duration::from_millis(500));
+    assert!(!work.is_expired());
 
     let before = time::SystemTime::now();
     block_on(work);

@@ -12,6 +12,10 @@ impl super::Oneshot for DummyTimer {
         unimplemented!();
     }
 
+    fn is_expired(&self) -> bool {
+        false
+    }
+
     fn cancel(&mut self) {
         unimplemented!();
     }

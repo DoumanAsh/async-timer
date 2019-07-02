@@ -137,6 +137,13 @@ impl super::Oneshot for AppleTimer {
         }
     }
 
+    fn is_expired(&self) -> bool {
+        match &self.state {
+            State::Init(_) => false,
+            State::Running(_, ref state) => state.is_done(),
+        }
+    }
+
     fn cancel(&mut self) {
         match &mut self.state {
             State::Init(_) => (),

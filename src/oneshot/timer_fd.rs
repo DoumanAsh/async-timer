@@ -62,7 +62,7 @@ impl Drop for RawTimer {
 
 enum State {
     Init(time::Duration),
-    Running,
+    Running(bool),
 }
 
 fn set_timer_value(fd: &RawTimer, timeout: &time::Duration) {
@@ -95,6 +95,13 @@ impl super::Oneshot for TimerFd {
         }
     }
 
+    fn is_expired(&self) -> bool {
+        match &self.state {
+            State::Init(_) => false,
+            State::Running(is_finished) => *is_finished,
+        }
+    }
+
     fn cancel(&mut self) {
         self.fd.get_mut().set(unsafe { mem::zeroed() });
     }
@@ -106,7 +113,8 @@ impl super::Oneshot for TimerFd {
             State::Init(ref mut timeout) => {
                 *timeout = *new_value;
             },
-            State::Running => {
+            State::Running(ref mut is_finished) => {
+                *is_finished = false;
                 set_timer_value(&self.fd.get_ref(), new_value);
             },
         }
@@ -121,9 +129,9 @@ impl Future for TimerFd {
             self.state = match &self.state {
                 State::Init(ref timeout) => {
                     set_timer_value(self.fd.get_ref(), timeout);
-                    State::Running
+                    State::Running(false)
                 },
-                State::Running => match Pin::new(&mut self.fd).poll_read_ready(ctx) {
+                State::Running(false) => match Pin::new(&mut self.fd).poll_read_ready(ctx) {
                     task::Poll::Pending => return task::Poll::Pending,
                     task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("timerfd cannot be ready") {
                         true => {
@@ -136,6 +144,7 @@ impl Future for TimerFd {
                         false => return task::Poll::Pending,
                     }
                 },
+                State::Running(true) => return task::Poll::Ready(()),
             }
         }
     }
