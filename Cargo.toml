@@ -26,7 +26,7 @@ libc = "0.2"
 
 [target.'cfg(any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
 libc = "0.2"
-nix = { version = "0.13", optional = true }
+nix = { version = "0.14", optional = true }
 mio = { version = "0.6", optional = true }
 romio = { version = "0.3.0-alpha.5", optional = true }
 
