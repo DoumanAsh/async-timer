@@ -45,6 +45,12 @@ pub trait Oneshot: Send + Sync + Unpin + Future<Output=()> {
     ///Timer should start only on first `Future::poll`
     fn new(timeout: time::Duration) -> Self;
 
+    ///Returns whether timer is ongoing.
+    ///
+    ///Note that if it returns `false` it doesn't mean that `is_expired` will return `true`
+    ///as initially timer is not armed.
+    fn is_ticking(&self) -> bool;
+
     ///Returns whether timer has expired.
     fn is_expired(&self) -> bool;
 

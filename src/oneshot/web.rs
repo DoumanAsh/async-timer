@@ -58,6 +58,13 @@ impl super::Oneshot for WebTimer {
         }
     }
 
+    fn is_ticking(&self) -> bool {
+        match &self.state {
+            State::Init(_) => false,
+            State::Running(_, ref state) => unsafe { !(**state).is_done() },
+        }
+    }
+
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,

@@ -137,6 +137,13 @@ impl super::Oneshot for AppleTimer {
         }
     }
 
+    fn is_ticking(&self) -> bool {
+        match &self.state {
+            State::Init(_) => false,
+            State::Running(_, ref state) => !state.is_done(),
+        }
+    }
+
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,

@@ -101,6 +101,13 @@ impl super::Oneshot for KqueueTimer {
         }
     }
 
+    fn is_ticking(&self) -> bool {
+        match &self.state {
+            State::Init(_) => false,
+            State::Running(is_finished) => !*is_finished,
+        }
+    }
+
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,

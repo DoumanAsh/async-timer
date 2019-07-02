@@ -10,6 +10,10 @@ impl super::Oneshot for NeverTimer {
         Self
     }
 
+    fn is_ticking(&self) -> bool {
+        true
+    }
+
     fn is_expired(&self) -> bool {
         false
     }
