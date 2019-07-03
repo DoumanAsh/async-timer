@@ -16,7 +16,7 @@ pub struct Timed<F, T=PlatformTimer> {
 
 impl<F: Unpin> Timed<F> {
     #[inline]
-    ///Creates new instance using [Timer](../oneshot//type.Timer.html) alias.
+    ///Creates new instance using [Timer](../oneshot/type.Timer.html) alias.
     pub fn platform_new(inner: F, timeout: time::Duration) -> Self {
         Timed::<F, PlatformTimer>::new(inner, timeout)
     }
@@ -24,7 +24,7 @@ impl<F: Unpin> Timed<F> {
 
 impl<F> Timed<F> {
     #[inline]
-    ///Creates new instance using [Timer](../oneshot//type.Timer.html) alias.
+    ///Creates new instance using [Timer](../oneshot/type.Timer.html) alias.
     ///
     ///Unsafe version of `platform_new` that doesn't require `Unpin`.
     pub unsafe fn platform_new_unchecked(inner: F, timeout: time::Duration) -> Self {
