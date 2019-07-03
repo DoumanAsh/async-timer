@@ -90,7 +90,7 @@ fn time_create(state: *mut TimerState) -> RawFd {
 fn set_timer_value(fd: RawFd, timeout: &time::Duration) {
     let it_value = libc::timespec {
         tv_sec: timeout.as_secs() as libc::time_t,
-        tv_nsec: libc::suseconds_t::from(timeout.subsec_nanos()),
+        tv_nsec: timeout.subsec_nanos() as libc::suseconds_t,
     };
 
     let new_value = ffi::itimerspec {
