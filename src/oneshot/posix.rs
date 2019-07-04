@@ -24,9 +24,10 @@ mod ffi {
     #[cfg(any(target_os = "freebsd"))]
     unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
         //Reference: https://github.com/freebsd/freebsd/blob/master/sys/sys/signal.h#L243
-        //So just skip over existing siginfo_t.
+        //So just skip over everything until si_value
+        const OFFSET: usize = mem::size_of::<libc::c_int>() * 6 + mem::size_of::<*const u8>();
         let val = info as *mut u8;
-        let val = val.add(mem::size_of::<libc::siginfo_t>()) as *mut libc::sigval;
+        let val = val.add(OFFSET) as *mut libc::sigval;
 
         (*val).sival_ptr as *const TimerState
     }
