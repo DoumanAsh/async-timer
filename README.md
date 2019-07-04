@@ -6,3 +6,5 @@
 [![dependency status](https://deps.rs/crate/async-timer/0.2.6/status.svg)](https://deps.rs/crate/async-timer)
 
 Timer facilities for Rust's async story
+
+Minimal Rust version: 1.36
