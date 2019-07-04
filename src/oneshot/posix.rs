@@ -14,12 +14,21 @@ mod ffi {
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
-        //TODO: Support BSD, but this shit requires some hacking due to slightly different struct
-        //      Most likely needs libc to sort out this shit
+        //Hack lvl 99
         let raw_bytes = (*info)._pad;
         let val: libc::sigval = ptr::read(raw_bytes[3..].as_ptr() as *const _);
 
         val.sival_ptr as *const TimerState
+    }
+
+    #[cfg(any(target_os = "freebsd"))]
+    unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
+        //Reference: https://github.com/freebsd/freebsd/blob/master/sys/sys/signal.h#L243
+        //So just skip over existing siginfo_t.
+        let val = info as *mut u8;
+        let val = val.add(mem::size_of::<libc::siginfo_t>()) as *mut libc::sigval;
+
+        (*val).sival_ptr as *const TimerState
     }
 
     pub unsafe extern "C" fn timer_handler(_sig: libc::c_int, si: *mut libc::siginfo_t, _uc: *mut libc::c_void) {

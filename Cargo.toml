@@ -30,7 +30,7 @@ nix = { version = "0.14", optional = true }
 mio = { version = "0.6", optional = true }
 romio = { version = "0.3.0-alpha.5", optional = true }
 
-[target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
+[target.'cfg(any(target_os = "linux", target_os = "android", target_os="freebsd"))'.dependencies]
 libc = "0.2"
 lazy_static = "1"
 mio = { version = "0.6", optional = true }
