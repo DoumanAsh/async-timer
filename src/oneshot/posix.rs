@@ -114,12 +114,6 @@ fn init() {
     }
 }
 
-lazy_static::lazy_static! {
-    static ref RUNTIME: () = {
-        init();
-    };
-}
-
 fn time_create(state: *mut TimerState) -> RawFd {
     let mut event: libc::sigevent = unsafe { mem::zeroed() };
 
@@ -172,8 +166,11 @@ pub struct PosixTimer {
 
 impl super::Oneshot for PosixTimer {
     fn new(timeout: time::Duration) -> Self {
+        static RUNTIME: std::sync::Once = std::sync::Once::new();
+
         debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
-        lazy_static::initialize(&RUNTIME);
+
+        RUNTIME.call_once(init);
 
         Self {
             state: State::Init(timeout),
