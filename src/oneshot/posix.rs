@@ -14,22 +14,64 @@ mod ffi {
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
-        //Hack lvl 99
-        let raw_bytes = (*info)._pad;
-        let val: libc::sigval = ptr::read(raw_bytes[3..].as_ptr() as *const _);
+        #[repr(C)]
+        pub struct _timer {
+            pub si_tid: libc::c_int,
+            pub si_overrun: libc::c_int,
+            pub si_sigval: libc::sigval,
+        }
+        #[repr(C)]
+        struct siginfo_timer {
+            _si_signo: libc::c_int,
+            _si_errno: libc::c_int,
+            _si_code: libc::c_int,
+            _timer: _timer,
+        }
 
-        val.sival_ptr as *const TimerState
+        let value = (*(info as *const libc::siginfo_t as *const siginfo_timer))._timer.si_sigval;
+
+        value.sival_ptr as *const TimerState
     }
 
-    #[cfg(any(target_os = "freebsd"))]
+    #[cfg(any(target_os = "openbsd", target_os = "netbsd"))]
+    unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
+        #[repr(C)]
+        pub struct _timer {
+            _pid: libc::pid_t,
+            _uid: libc::uid_t,
+            _value: libc::sigval,
+        }
+        #[repr(C)]
+        struct siginfo_timer {
+            _si_signo: libc::c_int,
+            _si_errno: libc::c_int,
+            _si_code: libc::c_int,
+            __pad1: libc::c_int,
+            _timer: _timer,
+        }
+
+        let value = (*(info as *const libc::siginfo_t as *const siginfo_timer))._timer._value;
+
+        value.sival_ptr as *const TimerState
+    }
+
+    #[cfg(any(target_os = "dragonfly", target_os = "freebsd"))]
     unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
         //Reference: https://github.com/freebsd/freebsd/blob/master/sys/sys/signal.h#L243
-        //So just skip over everything until si_value
-        const OFFSET: usize = mem::size_of::<libc::c_int>() * 6 + mem::size_of::<*const u8>();
-        let val = info as *mut u8;
-        let val = val.add(OFFSET) as *mut libc::sigval;
+        #[repr(C)]
+        pub struct siginfo_si_value {
+            pub si_signo: libc::c_int,
+            pub si_errno: libc::c_int,
+            pub si_code: libc::c_int,
+            pub si_pid: libc::pid_t,
+            pub si_uid: libc::uid_t,
+            pub si_status: libc::c_int,
+            pub si_addr: *mut libc::c_void,
+            pub si_value: libc::sigval,
+        }
+        let value = (*(info as *const libc::siginfo_t as *const siginfo_si_value)).si_value;
 
-        (*val).sival_ptr as *const TimerState
+        value.sival_ptr as *const TimerState
     }
 
     pub unsafe extern "C" fn timer_handler(_sig: libc::c_int, si: *mut libc::siginfo_t, _uc: *mut libc::c_void) {
@@ -86,7 +128,6 @@ fn time_create(state: *mut TimerState) -> RawFd {
     };
     event.sigev_signo = TIMER_SIG;
     event.sigev_notify = libc::SIGEV_SIGNAL;
-    event.sigev_notify_thread_id = 0;
 
     let mut res = 0;
 
@@ -100,7 +141,10 @@ fn time_create(state: *mut TimerState) -> RawFd {
 fn set_timer_value(fd: RawFd, timeout: &time::Duration) {
     let it_value = libc::timespec {
         tv_sec: timeout.as_secs() as libc::time_t,
+        #[cfg(not(any(target_os = "openbsd", target_os = "netbsd")))]
         tv_nsec: timeout.subsec_nanos() as libc::suseconds_t,
+        #[cfg(any(target_os = "openbsd", target_os = "netbsd"))]
+        tv_nsec: timeout.subsec_nanos() as libc::c_long,
     };
 
     let new_value = ffi::itimerspec {
