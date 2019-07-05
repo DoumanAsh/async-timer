@@ -1,6 +1,6 @@
 [package]
 name = "async-timer"
-version = "0.2.8"
+version = "0.2.9"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
 description = "Timers for Rust async story"
