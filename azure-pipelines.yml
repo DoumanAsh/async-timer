@@ -29,6 +29,7 @@ steps:
 
   - script: cargo check --all --features no_std
     displayName: Cargo check no_std
+    condition: ne( variables['Agent.OS'], 'Linux' )
 
   - script: cargo test --features romio_on
     displayName: cargo test Event loop timer

@@ -1,5 +1,8 @@
 //! Posix based timer
 
+#[cfg(feature = "no_std")]
+core::compile_error!("no_std is not supported for posix implementation");
+
 use core::future::Future;
 use core::pin::Pin;
 use core::{mem, ptr, time, task};
