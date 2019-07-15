@@ -14,7 +14,7 @@ use core::future::Future;
 ///
 ///- Windows uses thread pooled timer
 ///- Apple systems uses dispatch source API
-///- Posix compatible `timer_create`, currently available only on Linux systems
+///- Posix compatible `timer_create`, available on major Posix-compliant systems. Depends on availability of `siginfo_t::si_value` method.
 ///- Wasm uses Web API `SetTimeout`
 ///- Dummy timer is used  when no implementation is available. Panics when used.
 ///
@@ -69,7 +69,7 @@ mod state;
 pub mod web;
 #[cfg(windows)]
 pub mod win;
-#[cfg(any(target_os = "linux", target_os = "android", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))]
+#[cfg(unix)]
 pub mod posix;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub mod apple;
@@ -77,10 +77,6 @@ pub mod apple;
 pub mod timer_fd;
 #[cfg(all(feature = "romio_on", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
 pub mod kqueue;
-#[cfg(not(any(
-windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios", target_os="freebsd", target_os="netbsd", target_os = "openbsd", target_os="dragonfly",
-all(feature = "romio_on", any(target_os = "bitrig", target_os = "ios", target_os = "macos"))
-)))]
 pub mod dummy;
 mod extra;
 
@@ -97,7 +93,7 @@ pub type Timer = web::WebTimer;
 ///Alias to Windows Timer
 pub type Timer = win::WinTimer;
 
-#[cfg(all(not(feature = "romio_on"), any(target_os = "linux", target_os = "android", target_os = "dragonfly", target_os = "netbsd", target_os="freebsd", target_os = "openbsd")))]
+#[cfg(all(not(feature = "romio_on"), unix))]
 ///Alias to Posix Timer
 pub type Timer = posix::PosixTimer;
 #[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
@@ -112,7 +108,7 @@ pub type Timer = apple::AppleTimer;
 pub type Timer = kqueue::KqueueTimer;
 
 #[cfg(not(any(
-windows, target_arch = "wasm32", target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios", target_os="freebsd", target_os="netbsd", target_os = "openbsd", target_os="dragonfly",
+windows, target_arch = "wasm32", unix,
 all(feature = "romio_on", any(target_os = "bitrig", target_os = "ios", target_os = "macos"))
 )))]
 ///Dummy Timer

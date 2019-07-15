@@ -24,7 +24,7 @@ impl super::Oneshot for DummyTimer {
         unimplemented!();
     }
 
-    fn restart(&mut self, new_value: &time::Duration, waker: &task::Waker) {
+    fn restart(&mut self, _: &time::Duration, _: &task::Waker) {
         unimplemented!();
     }
 }
@@ -32,7 +32,7 @@ impl super::Oneshot for DummyTimer {
 impl Future for DummyTimer {
     type Output = ();
 
-    fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, _: &mut task::Context) -> task::Poll<Self::Output> {
         unimplemented!();
     }
 }

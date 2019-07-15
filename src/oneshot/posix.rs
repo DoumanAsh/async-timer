@@ -15,68 +15,12 @@ type RawFd = usize;
 mod ffi {
     use super::*;
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[inline(always)]
     unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
-        #[repr(C)]
-        pub struct _timer {
-            pub si_tid: libc::c_int,
-            pub si_overrun: libc::c_int,
-            pub si_sigval: libc::sigval,
-        }
-        #[repr(C)]
-        struct siginfo_timer {
-            _si_signo: libc::c_int,
-            _si_errno: libc::c_int,
-            _si_code: libc::c_int,
-            _timer: _timer,
-        }
-
-        let value = (*(info as *const libc::siginfo_t as *const siginfo_timer))._timer.si_sigval;
+        let value = (*info).si_value();
 
         value.sival_ptr as *const TimerState
     }
-
-    #[cfg(any(target_os = "openbsd", target_os = "netbsd"))]
-    unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
-        #[repr(C)]
-        pub struct _timer {
-            _pid: libc::pid_t,
-            _uid: libc::uid_t,
-            _value: libc::sigval,
-        }
-        #[repr(C)]
-        struct siginfo_timer {
-            _si_signo: libc::c_int,
-            _si_errno: libc::c_int,
-            _si_code: libc::c_int,
-            __pad1: libc::c_int,
-            _timer: _timer,
-        }
-
-        let value = (*(info as *const libc::siginfo_t as *const siginfo_timer))._timer._value;
-
-        value.sival_ptr as *const TimerState
-    }
-
-    #[cfg(any(target_os = "dragonfly", target_os = "freebsd"))]
-    unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
-        //Reference: https://github.com/freebsd/freebsd/blob/master/sys/sys/signal.h#L243
-        #[repr(C)]
-        pub struct siginfo_si_value {
-            pub si_signo: libc::c_int,
-            pub si_errno: libc::c_int,
-            pub si_code: libc::c_int,
-            pub si_pid: libc::pid_t,
-            pub si_uid: libc::uid_t,
-            pub si_status: libc::c_int,
-            pub si_addr: *mut libc::c_void,
-            pub si_value: libc::sigval,
-        }
-        let value = (*(info as *const libc::siginfo_t as *const siginfo_si_value)).si_value;
-
-        value.sival_ptr as *const TimerState
-    }
-
     pub unsafe extern "C" fn timer_handler(_sig: libc::c_int, si: *mut libc::siginfo_t, _uc: *mut libc::c_void) {
         let state = get_value(si);
 
