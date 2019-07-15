@@ -69,7 +69,7 @@ mod state;
 pub mod web;
 #[cfg(windows)]
 pub mod win;
-#[cfg(unix)]
+#[cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))]
 pub mod posix;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub mod apple;
@@ -93,7 +93,7 @@ pub type Timer = web::WebTimer;
 ///Alias to Windows Timer
 pub type Timer = win::WinTimer;
 
-#[cfg(all(not(feature = "romio_on"), unix))]
+#[cfg(all(not(feature = "romio_on"), not(any(target_os = "macos", target_os = "ios")), unix))]
 ///Alias to Posix Timer
 pub type Timer = posix::PosixTimer;
 #[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
