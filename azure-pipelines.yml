@@ -31,7 +31,7 @@ steps:
     displayName: Cargo check no_std
     condition: ne( variables['Agent.OS'], 'Linux' )
 
-  - script: cargo test --features romio_on
+  - script: cargo test --features tokio
     displayName: cargo test Event loop timer
     condition: or( eq(variables['Agent.OS'], 'Darwin'), eq(variables['Agent.OS'], 'Linux') )
 

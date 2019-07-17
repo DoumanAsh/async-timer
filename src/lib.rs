@@ -10,7 +10,7 @@
 //!
 //! ## Features
 //!
-//! - `romio_on` - Enables implementations that require platform's event loop
+//! - `tokio` - Enables implementations that require platform's event loop
 #![warn(missing_docs)]
 
 #![cfg_attr(feature = "no_std", no_std)]

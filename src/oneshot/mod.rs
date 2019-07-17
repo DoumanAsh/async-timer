@@ -18,7 +18,7 @@ use core::future::Future;
 ///- Wasm uses Web API `SetTimeout`
 ///- Dummy timer is used  when no implementation is available. Panics when used.
 ///
-///## Feature `romio_on`
+///## Feature `tokio`
 ///
 ///- Linux uses `timerfd_create`, replaces Posix tiemr when enabled.
 ///- Other unix systems uses `kqueue`, replaces Apple timer when enabled.
@@ -73,16 +73,16 @@ pub mod win;
 pub mod posix;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub mod apple;
-#[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
+#[cfg(all(feature = "tokio", any(target_os = "linux", target_os = "android")))]
 pub mod timer_fd;
-#[cfg(all(feature = "romio_on", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
+#[cfg(all(feature = "tokio", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
 pub mod kqueue;
 pub mod dummy;
 mod extra;
 
 pub use extra::NeverTimer;
 
-#[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
+#[cfg(all(feature = "tokio", any(target_os = "linux", target_os = "android")))]
 pub use timer_fd::TimerFd;
 
 #[cfg(target_arch = "wasm32")]
@@ -93,23 +93,23 @@ pub type Timer = web::WebTimer;
 ///Alias to Windows Timer
 pub type Timer = win::WinTimer;
 
-#[cfg(all(not(feature = "romio_on"), not(any(target_os = "macos", target_os = "ios")), unix))]
+#[cfg(all(not(feature = "tokio"), not(any(target_os = "macos", target_os = "ios")), unix))]
 ///Alias to Posix Timer
 pub type Timer = posix::PosixTimer;
-#[cfg(all(feature = "romio_on", any(target_os = "linux", target_os = "android")))]
+#[cfg(all(feature = "tokio", any(target_os = "linux", target_os = "android")))]
 ///Alias to Linux `timerfd` Timer
 pub type Timer = timer_fd::TimerFd;
 
-#[cfg(all(not(feature = "romio_on"), any(target_os = "macos", target_os = "ios")))]
+#[cfg(all(not(feature = "tokio"), any(target_os = "macos", target_os = "ios")))]
 ///Alias to Apple Timer
 pub type Timer = apple::AppleTimer;
-#[cfg(all(feature = "romio_on", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
+#[cfg(all(feature = "tokio", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
 ///Alias to `kqueue` based Timer
 pub type Timer = kqueue::KqueueTimer;
 
 #[cfg(not(any(
 windows, target_arch = "wasm32", unix,
-all(feature = "romio_on", any(target_os = "bitrig", target_os = "ios", target_os = "macos"))
+all(feature = "tokio", any(target_os = "bitrig", target_os = "ios", target_os = "macos"))
 )))]
 ///Dummy Timer
 pub type Timer = dummy::DummyTimer;

@@ -87,7 +87,7 @@ enum State {
 
 ///Timer based on `kqueue`
 pub struct KqueueTimer {
-    fd: romio::raw::PollEvented<RawTimer>,
+    fd: tokio_reactor::PollEvented<RawTimer>,
     state: State,
 }
 
@@ -96,7 +96,7 @@ impl super::Oneshot for KqueueTimer {
         debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         Self {
-            fd: romio::raw::PollEvented::new(RawTimer::new()),
+            fd: tokio_reactor::PollEvented::new(RawTimer::new()),
             state: State::Init(timeout),
         }
     }
@@ -144,11 +144,11 @@ impl Future for KqueueTimer {
                     self.fd.get_ref().set(timeout);
                     State::Running(false)
                 },
-                State::Running(false) => match Pin::new(&mut self.fd).poll_read_ready(ctx) {
+                State::Running(false) => match Pin::new(&mut self.fd).poll_read_ready(ctx, mio::Ready::readable()) {
                     task::Poll::Pending => return task::Poll::Pending,
                     task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("kqueue cannot be ready") {
                         true => {
-                            let _ = Pin::new(&mut self.fd).clear_read_ready(ctx);
+                            let _ = Pin::new(&mut self.fd).clear_read_ready(ctx, mio::Ready::readable());
                             match self.fd.get_mut().read() {
                                 0 => return task::Poll::Pending,
                                 _ => return task::Poll::Ready(()),
