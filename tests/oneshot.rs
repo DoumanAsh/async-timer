@@ -1,18 +1,16 @@
+#![feature(async_await)]
+
 use async_timer::oneshot::{Oneshot, Timer};
-use futures::executor::block_on;
 
 use std::time;
 
-#[test]
-fn test_oneshot() {
-    #[cfg(feature = "tokio")]
-    let _reactor = tokio_reactor::Reactor::new().unwrap();
-
+#[tokio::test]
+async fn test_oneshot() {
     let work = Timer::new(time::Duration::from_secs(2));
     assert!(!work.is_expired());
 
     let before = time::SystemTime::now();
-    block_on(work);
+    work.await;
     let after = time::SystemTime::now();
     let diff = after.duration_since(before).unwrap();
 
@@ -20,11 +18,8 @@ fn test_oneshot() {
 
 }
 
-#[test]
-fn test_tons_oneshot() {
-    #[cfg(feature = "tokio")]
-    let _reactor = tokio_reactor::Reactor::new().unwrap();
-
+#[tokio::test]
+async fn test_tons_oneshot() {
     const NUM: usize = 1024;
     let mut jobs = Vec::with_capacity(NUM);
 
@@ -33,23 +28,20 @@ fn test_tons_oneshot() {
     }
 
     let before = time::SystemTime::now();
-    block_on(futures::future::join_all(jobs));
+    futures::future::join_all(jobs).await;
     let after = time::SystemTime::now();
     let diff = after.duration_since(before).unwrap();
 
     assert!(diff.as_millis() >= 1_500 && diff.as_millis() <= 2_500);
 }
 
-#[test]
-fn test_smol_oneshot() {
-    #[cfg(feature = "tokio")]
-    let _reactor = tokio_reactor::Reactor::new().unwrap();
-
+#[tokio::test]
+async fn test_smol_oneshot() {
     let work = Timer::new(time::Duration::from_millis(500));
     assert!(!work.is_expired());
 
     let before = time::SystemTime::now();
-    block_on(work);
+    work.await;
     let after = time::SystemTime::now();
     let diff = after.duration_since(before).unwrap();
 

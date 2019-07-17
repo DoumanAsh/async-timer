@@ -1,11 +1,12 @@
+#![feature(async_await)]
+
 use async_timer::{Timed};
 use async_timer::oneshot::{Oneshot, Timer};
-use futures::executor::block_on;
 
 use std::time;
 
-#[test]
-fn test_timed() {
+#[tokio::test]
+async fn test_timed() {
     #[cfg(feature = "tokio")]
     let _reactor = tokio_reactor::Reactor::new().unwrap();
 
@@ -14,10 +15,10 @@ fn test_timed() {
 
     let before = time::SystemTime::now();
 
-    let expired = block_on(work).unwrap_err();
-    let work = block_on(expired);
+    let expired = work.await.unwrap_err();
+    let work = expired.await;
 
-    assert!(block_on(work).is_ok());
+    assert!(work.await.is_ok());
     let after = time::SystemTime::now();
     let diff = after.duration_since(before).unwrap();
 
