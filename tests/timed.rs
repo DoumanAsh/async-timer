@@ -6,6 +6,9 @@ use std::time;
 
 #[test]
 fn test_timed() {
+    #[cfg(feature = "tokio")]
+    let _reactor = tokio_reactor::Reactor::new().unwrap();
+
     let future = Timer::new(time::Duration::from_secs(4));
     let work = Timed::platform_new(future, time::Duration::from_secs(3));
 

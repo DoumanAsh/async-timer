@@ -5,6 +5,9 @@ use std::time;
 
 #[test]
 fn test_oneshot() {
+    #[cfg(feature = "tokio")]
+    let _reactor = tokio_reactor::Reactor::new().unwrap();
+
     let work = Timer::new(time::Duration::from_secs(2));
     assert!(!work.is_expired());
 
@@ -19,6 +22,9 @@ fn test_oneshot() {
 
 #[test]
 fn test_tons_oneshot() {
+    #[cfg(feature = "tokio")]
+    let _reactor = tokio_reactor::Reactor::new().unwrap();
+
     const NUM: usize = 1024;
     let mut jobs = Vec::with_capacity(NUM);
 
@@ -36,6 +42,9 @@ fn test_tons_oneshot() {
 
 #[test]
 fn test_smol_oneshot() {
+    #[cfg(feature = "tokio")]
+    let _reactor = tokio_reactor::Reactor::new().unwrap();
+
     let work = Timer::new(time::Duration::from_millis(500));
     assert!(!work.is_expired());
 
