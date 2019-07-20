@@ -16,6 +16,7 @@ impl RawTimer {
     fn new() -> Self {
         let fd = nix::sys::event::kqueue().unwrap_or(-1);
 
+        //If you hit this, then most likely you run into OS imposed limit on file descriptor number
         assert_ne!(fd, -1);
         Self(fd)
     }
@@ -62,6 +63,8 @@ impl RawTimer {
 
 impl mio::Evented for RawTimer {
     fn register(&self, poll: &mio::Poll, token: mio::Token, interest: mio::Ready, opts: mio::PollOpt) -> io::Result<()> {
+        debug_assert!(interest.is_readable());
+        debug_assert!(!interest.is_writable());
         mio::unix::EventedFd(&self.0).register(poll, token, interest, opts)
     }
 
