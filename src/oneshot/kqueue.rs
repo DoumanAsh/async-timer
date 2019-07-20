@@ -62,13 +62,13 @@ impl RawTimer {
 }
 
 impl mio::Evented for RawTimer {
-    fn register(&self, poll: &mio::Poll, token: mio::Token, interest: mio::Ready, opts: mio::PollOpt) -> io::Result<()> {
-        debug_assert!(interest.is_readable());
-        debug_assert!(!interest.is_writable());
+    fn register(&self, poll: &mio::Poll, token: mio::Token, mut interest: mio::Ready, opts: mio::PollOpt) -> io::Result<()> {
+        interest.remove(mio::Ready::writable());
         mio::unix::EventedFd(&self.0).register(poll, token, interest, opts)
     }
 
-    fn reregister(&self, poll: &mio::Poll, token: mio::Token, interest: mio::Ready, opts: mio::PollOpt) -> io::Result<()> {
+    fn reregister(&self, poll: &mio::Poll, token: mio::Token, mut interest: mio::Ready, opts: mio::PollOpt) -> io::Result<()> {
+        interest.remove(mio::Ready::writable());
         mio::unix::EventedFd(&self.0).reregister(poll, token, interest, opts)
     }
 
