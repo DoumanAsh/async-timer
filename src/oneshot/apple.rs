@@ -1,6 +1,6 @@
 //! Dispatch Source based Timer
 
-use core::{task, time};
+use core::{ptr, task, time};
 use core::pin::Pin;
 use core::future::Future;
 

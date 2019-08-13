@@ -1,7 +1,6 @@
 #![feature(async_await)]
 
 use async_timer::{Interval};
-use async_timer::oneshot::{Oneshot};
 
 use std::time;
 
