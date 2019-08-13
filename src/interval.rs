@@ -8,6 +8,9 @@ use crate::oneshot::Oneshot;
 use crate::oneshot::Timer as PlatformTimer;
 
 ///Periodic Timer
+///
+///On each completition user receives new instance that can be polled once again
+///Note that returned Interval is already armed, so it don't need initial poll to start over.
 #[must_use = "Interval does nothing unless polled"]
 pub struct Interval<T=PlatformTimer> {
     inner: Option<(T, time::Duration)>,
