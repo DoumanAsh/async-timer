@@ -41,6 +41,7 @@ mod ffi {
 
 //TODO: Investigate why sometimes it is called multiple times
 unsafe extern "C" fn timer_handler(context: *mut c_void) {
+    println!("timer_handler");
     let state = context as *mut TimerState;
 
     (*state).wake();
