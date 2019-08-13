@@ -27,6 +27,8 @@ use std as alloc;
 mod utils;
 pub mod oneshot;
 pub mod timed;
+pub mod interval;
 
 pub use oneshot::Oneshot;
 pub use timed::Timed;
+pub use interval::Interval;

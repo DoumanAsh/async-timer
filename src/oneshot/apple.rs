@@ -38,6 +38,7 @@ mod ffi {
     }
 }
 
+//TODO: Investigate why sometimes it is called multiple times
 unsafe extern "C" fn timer_handler(context: *mut c_void) {
     let state = context as *mut TimerState;
 
@@ -168,8 +169,8 @@ impl super::Oneshot for AppleTimer {
                 *timeout = *new_value;
             },
             State::Running(ref mut fd, ref state) => {
-                state.register(waker);
                 fd.set_delay(new_value);
+                state.register(waker);
             },
         }
     }
