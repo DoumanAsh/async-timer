@@ -27,13 +27,13 @@ steps:
     displayName: Windows install rust
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-    #- script: cargo check --all --features no_std
-    #  displayName: Cargo check no_std
-    #  condition: ne( variables['Agent.OS'], 'Linux' )
-
-  - script: cargo test --all -- --nocapture
-    displayName: Cargo test
+  - script: cargo check --all --features no_std
+    displayName: Cargo check no_std
+    condition: ne( variables['Agent.OS'], 'Linux' )
 
   - script: env RUST_BACKTRACE=1 cargo test --features tokio_on
     displayName: cargo test Event loop timer
     condition: or( eq(variables['Agent.OS'], 'Darwin'), eq(variables['Agent.OS'], 'Linux') )
+
+  - script: cargo test --all
+    displayName: Cargo test
