@@ -19,7 +19,8 @@ mod ffi {
     pub type dispatch_source_type_t = *const c_void;
     pub type dispatch_time_t = u64;
 
-    pub const DISPATCH_TIME_NOW: dispatch_time_t = 0;
+    pub const DISPATCH_TIME_FOREVER: dispatch_time_t = !0;
+    //pub const DISPATCH_WALLTIME_NOW: dispatch_time_t = !1;
     pub const QOS_CLASS_DEFAULT: c_long = 0x15;
 
     extern "C" {
@@ -34,7 +35,7 @@ mod ffi {
         pub fn dispatch_suspend(object: dispatch_object_t);
         pub fn dispatch_release(object: dispatch_object_t);
         pub fn dispatch_source_cancel(object: dispatch_object_t);
-        pub fn dispatch_time(when: dispatch_time_t, delta: i64) -> dispatch_time_t;
+        pub fn dispatch_walltime(when: *const c_void, delta: i64) -> dispatch_time_t;
     }
 }
 
@@ -110,8 +111,8 @@ impl TimerHandle {
         self.suspend();
 
         unsafe {
-            let start = ffi::dispatch_time(ffi::DISPATCH_TIME_NOW, timeout.as_nanos() as i64);
-            ffi::dispatch_source_set_timer(self.inner, start, 0, 0);
+            let start = ffi::dispatch_walltime(ptr::null(), timeout.as_nanos() as i64);
+            ffi::dispatch_source_set_timer(self.inner, start, ffi::DISPATCH_TIME_FOREVER, 0);
         }
 
         self.resume();
