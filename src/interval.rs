@@ -10,7 +10,10 @@ use crate::oneshot::Timer as PlatformTimer;
 ///Periodic Timer
 ///
 ///On each completition user receives new instance that can be polled once again
-///Note that returned Interval is already armed, so it don't need initial poll to start over.
+///
+///## Note
+///
+///Returned Interval is already armed, so it don't need initial poll to start over.
 ///
 ///## Usage
 ///

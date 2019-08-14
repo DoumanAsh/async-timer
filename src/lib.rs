@@ -6,8 +6,8 @@
 //!
 //! ## Primitives
 //!
-//! - [Timed](struct.Timed.html) - A wrapper over future that allows to limit time for the future to resolve.
-//! - [Interval](struct.Interval.html) - Periodic timer, that on each completition returns itself to poll once again with the same interval.
+//! - [Timed](enum.Timed.html) - A wrapper over future that allows to limit time for the future to resolve.
+//! - [Interval](enum.Interval.html) - Periodic timer, that on each completition returns itself to poll once again with the same interval.
 //!
 //! ## Features
 //!
