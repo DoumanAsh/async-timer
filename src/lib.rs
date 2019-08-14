@@ -13,7 +13,6 @@
 //!
 //! - `tokio_on` - Enables implementations that require platform's event loop
 #![warn(missing_docs)]
-#![feature(async_await)]
 
 #![cfg_attr(feature = "no_std", no_std)]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::style))]
