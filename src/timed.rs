@@ -1,7 +1,7 @@
 //! Timed future
 
 use core::future::Future;
-use core::{fmt, task, time};
+use core::{fmt, task, time, mem};
 use core::pin::Pin;
 
 use crate::oneshot::Oneshot;
@@ -23,17 +23,18 @@ use crate::oneshot::Timer as PlatformTimer;
 ///        async_timer::Timed::platform_new_unchecked(job(), core::time::Duration::from_secs(1))
 ///    };
 ///
-///    match work.wait().await {
+///    match work.await {
 ///        Ok(_) => println!("I'm done!"),
-///        //You can `Expired::retry` to resume it
+///        //You can retry by polling `expired`
 ///        Err(expired) => println!("Job expired: {}", expired),
 ///    }
 ///}
 ///```
-pub struct Timed<F, T=PlatformTimer> {
-    timeout: time::Duration,
-    inner: F,
-    timer: T,
+pub enum Timed<F, T=PlatformTimer> {
+    #[doc(hidden)]
+    Ongoing(T, F, time::Duration),
+    #[doc(hidden)]
+    Stopped,
 }
 
 impl<F: Future + Unpin> Timed<F> {
@@ -59,11 +60,7 @@ impl<F: Future + Unpin, T: Oneshot> Timed<F, T> {
     ///
     ///Requires to specify `Oneshot` type (e.g. `Timed::<oneshoot::Timer>::new()`)
     pub fn new(inner: F, timeout: time::Duration) -> Self {
-        Self {
-            timeout,
-            inner,
-            timer: T::new(timeout),
-        }
+        Timed::Ongoing(T::new(timeout), inner, timeout)
     }
 }
 
@@ -74,45 +71,36 @@ impl<F: Future, T: Oneshot> Timed<F, T> {
     ///
     ///Requires to specify `Oneshot` type (e.g. `Timed::<oneshoot::Timer>::new()`)
     pub unsafe fn new_unchecked(inner: F, timeout: time::Duration) -> Self {
-        Self {
-            timeout,
-            inner,
-            timer: T::new(timeout),
-        }
+        Timed::Ongoing(T::new(timeout), inner, timeout)
     }
-
-    ///Waits for future to finish executing within specified timeout.
-    pub async fn wait(mut self) -> Result<F::Output, Expired<F, T>> {
-        match unsafe { Pin::new_unchecked(&mut self) }.await {
-            TimedStatus::Finished(result) => Ok(result),
-            TimedStatus::Expired => Err(Expired {
-                timed: self,
-            }),
-        }
-    }
-}
-
-///Plain result of Timed Future execution.
-pub enum TimedStatus<T> {
-    ///Future is successfully finished in time.
-    Finished(T),
-    ///Timed expired before future finished execution.
-    Expired,
 }
 
 impl<F: Future, T: Oneshot> Future for Timed<F, T> {
-    type Output = TimedStatus<F::Output>;
+    type Output = Result<F::Output, Expired<F, T>>;
 
     fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        let this = unsafe { self.get_unchecked_mut() };
-        match Future::poll(unsafe { Pin::new_unchecked(&mut this.inner) }, ctx) {
-            task::Poll::Pending => (),
-            task::Poll::Ready(result) => return task::Poll::Ready(TimedStatus::Finished(result)),
-        }
+        let mut state = Timed::Stopped;
+        let mut this = unsafe { self.get_unchecked_mut() };
+        mem::swap(&mut state, &mut this);
 
-        match Future::poll(Pin::new(&mut this.timer), ctx) {
-            task::Poll::Pending => task::Poll::Pending,
-            task::Poll::Ready(_) => return task::Poll::Ready(TimedStatus::Expired),
+        match state {
+            Timed::Ongoing(mut timer, mut future, timeout) => {
+                match Future::poll(unsafe { Pin::new_unchecked(&mut future) }, ctx) {
+                    task::Poll::Pending => (),
+                    task::Poll::Ready(result) => return task::Poll::Ready(Ok(result)),
+                }
+
+                match Future::poll(Pin::new(&mut timer), ctx) {
+                    task::Poll::Pending => (),
+                    task::Poll::Ready(_) => return task::Poll::Ready(Err(Expired {
+                        inner: Timed::Ongoing(timer, future, timeout),
+                    })),
+                }
+
+                *this = Timed::Ongoing(timer, future, timeout);
+                task::Poll::Pending
+            },
+            Timed::Stopped => task::Poll::Pending,
         }
     }
 }
@@ -124,40 +112,35 @@ impl<F: Future + Unpin, T: Oneshot> Unpin for Timed<F, T> {}
 ///Implements `Future` that can be used to restart `Timed`
 ///Note, that `Oneshot` starts execution immediately after resolving this Future
 pub struct Expired<F, T> {
-    timed: Timed<F, T>
+    inner: Timed<F, T>,
 }
 
 impl<F: Future, T: Oneshot> Expired<F, T> {
     ///Returns underlying `Future`
     pub fn into_inner(self) -> F {
-        self.timed.inner
-    }
-
-    ///Retries to execute future again with the same timeout
-    pub async fn retry(mut self) -> Timed<F, T> {
-        unsafe { Pin::new_unchecked(&mut self) }.await;
-
-        self.timed
-    }
-
-    ///Retries to execute future again with the new timeout
-    pub async fn retry_within(mut self, timeout: time::Duration) -> Timed<F, T> {
-        self.timed.timeout = timeout;
-        unsafe { Pin::new_unchecked(&mut self) }.await;
-
-        self.timed
+        match self.inner {
+            Timed::Ongoing(_, fut, _) => fut,
+            _ => unreach!(),
+        }
     }
 }
 
 impl<F: Future, T: Oneshot> Future for Expired<F, T> {
-    type Output = ();
+    type Output = Timed<F, T>;
 
     fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        let timeout = self.timed.timeout;
+        let mut state = Timed::Stopped;
         let this = unsafe { self.get_unchecked_mut() };
-        this.timed.timer.restart(&timeout, ctx.waker());
+        mem::swap(&mut this.inner, &mut state);
 
-        task::Poll::Ready(())
+        match state {
+            Timed::Ongoing(mut timer, future, timeout) => {
+                timer.restart(&timeout, ctx.waker());
+
+                task::Poll::Ready(Timed::Ongoing(timer, future, timeout))
+            },
+            _ => task::Poll::Pending,
+        }
     }
 }
 
@@ -173,9 +156,12 @@ impl<F, T: Oneshot> fmt::Debug for Expired<F, T> {
 
 impl<F, T: Oneshot> fmt::Display for Expired<F, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.timed.timeout.as_secs() {
-            0 => write!(f, "Future expired in {} ms", self.timed.timeout.as_millis()),
-            secs => write!(f, "Future expired in {} seconds and {} ms", secs, self.timed.timeout.subsec_millis()),
+        match self.inner {
+            Timed::Stopped => write!(f, "Future is being re-tried."),
+            Timed::Ongoing(_, _, timeout) => match timeout.as_secs() {
+                0 => write!(f, "Future expired in {} ms", timeout.as_millis()),
+                secs => write!(f, "Future expired in {} seconds and {} ms", secs, timeout.subsec_millis()),
+            },
         }
     }
 }

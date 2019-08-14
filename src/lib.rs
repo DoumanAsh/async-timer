@@ -40,11 +40,11 @@ pub use interval::Interval;
 ///Run future in timed fashion using default Platform timer.
 pub fn timed<F: future::Future>(job: F, timeout: time::Duration) -> impl future::Future<Output=Result<F::Output, Expired<F, oneshot::Timer>>> {
     unsafe {
-        Timed::platform_new_unchecked(job, timeout).wait()
+        Timed::platform_new_unchecked(job, timeout)
     }
 }
 
 ///Creates interval with default Platform timer.
 pub fn interval(interval: time::Duration) -> impl future::Future<Output=Interval<oneshot::Timer>> {
-    Interval::platform_new(interval).next()
+    Interval::platform_new(interval)
 }

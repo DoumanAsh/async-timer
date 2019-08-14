@@ -15,10 +15,10 @@ async fn test_timed() {
 
     let before = time::SystemTime::now();
 
-    let expired = work.wait().await.unwrap_err();
-    let work = expired.retry().await;
+    let expired = work.await.unwrap_err();
+    let work = expired.await;
 
-    assert!(work.wait().await.is_ok());
+    assert!(work.await.is_ok());
     let after = time::SystemTime::now();
     let diff = after.duration_since(before).unwrap();
 

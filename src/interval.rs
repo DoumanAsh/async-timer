@@ -1,7 +1,7 @@
 //!Interval module
 
 use core::future::Future;
-use core::{task, time};
+use core::{task, time, mem};
 use core::pin::Pin;
 
 use crate::oneshot::Oneshot;
@@ -26,15 +26,17 @@ use crate::oneshot::Timer as PlatformTimer;
 ///
 ///    while times < 5 {
 ///        job().await;
-///        interval = interval.next().await;
+///        interval = interval.await;
 ///        times += 1;
 ///    }
 ///}
 ///```
 #[must_use = "Interval does nothing unless polled"]
-pub struct Interval<T=PlatformTimer> {
-    timer: T,
-    interval: time::Duration,
+pub enum Interval<T=PlatformTimer> {
+    #[doc(hidden)]
+    Ongoing(T, time::Duration),
+    #[doc(hidden)]
+    Stopped,
 }
 
 impl Interval {
@@ -48,30 +50,28 @@ impl Interval {
 impl<T: Oneshot> Interval<T> {
     ///Creates new instance with specified timer type.
     pub fn new(interval: time::Duration) -> Self {
-        Self {
-            timer: T::new(interval),
-            interval,
-        }
-    }
-
-    ///Waits for next interval and returns self to do it again.
-    pub async fn next(mut self) -> Self {
-        Pin::new(&mut self).await;
-        self
+        Interval::Ongoing(T::new(interval), interval)
     }
 }
 
 impl<T: Oneshot> Future for Interval<T> {
-    type Output = ();
+    type Output = Self;
 
     fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        match Future::poll(Pin::new(&mut self.timer), ctx) {
-            task::Poll::Ready(()) => {
-                let interval = self.interval;
-                self.timer.restart(&interval, ctx.waker());
-                task::Poll::Ready(())
-            }
-            task::Poll::Pending => task::Poll::Pending,
+        let mut state = Interval::Stopped;
+        mem::swap(self.as_mut().get_mut(), &mut state);
+        match state {
+            Interval::Ongoing(mut timer, interval) => match Future::poll(Pin::new(&mut timer), ctx) {
+                task::Poll::Ready(()) => {
+                    timer.restart(&interval, ctx.waker());
+                    task::Poll::Ready(Interval::Ongoing(timer, interval))
+                },
+                task::Poll::Pending => {
+                    *self = Interval::Ongoing(timer, interval);
+                    task::Poll::Pending
+                },
+            },
+            Interval::Stopped => task::Poll::Pending
         }
     }
 }
