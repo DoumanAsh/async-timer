@@ -11,9 +11,30 @@ use crate::oneshot::Timer as PlatformTimer;
 ///
 ///On each completition user receives new instance that can be polled once again
 ///Note that returned Interval is already armed, so it don't need initial poll to start over.
+///
+///## Usage
+///
+///```rust, no_run
+///#![feature(async_await)]
+///
+///async fn job() {
+///}
+///
+///async fn do_a_while() {
+///    let mut times: u8 = 0;
+///    let mut interval = async_timer::Interval::platform_new(core::time::Duration::from_secs(1));
+///
+///    while times < 5 {
+///        job().await;
+///        interval = interval.next().await;
+///        times += 1;
+///    }
+///}
+///```
 #[must_use = "Interval does nothing unless polled"]
 pub struct Interval<T=PlatformTimer> {
-    inner: Option<(T, time::Duration)>,
+    timer: T,
+    interval: time::Duration,
 }
 
 impl Interval {
@@ -28,35 +49,28 @@ impl<T: Oneshot> Interval<T> {
     ///Creates new instance with specified timer type.
     pub fn new(interval: time::Duration) -> Self {
         Self {
-            inner: Some((T::new(interval), interval)),
+            timer: T::new(interval),
+            interval,
         }
     }
 
-    fn inner(&mut self) -> &mut (T, time::Duration) {
-        match self.inner {
-            Some(ref mut inner) => inner,
-            None => unreach!()
-        }
+    ///Waits for next interval and returns self to do it again.
+    pub async fn next(mut self) -> Self {
+        Pin::new(&mut self).await;
+        self
     }
 }
 
 impl<T: Oneshot> Future for Interval<T> {
-    type Output = Self;
+    type Output = ();
 
-    fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        let this = self.get_mut();
-
-        match Future::poll(Pin::new(&mut this.inner().0), ctx) {
+    fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
+        match Future::poll(Pin::new(&mut self.timer), ctx) {
             task::Poll::Ready(()) => {
-                let (mut timer, interval) = match this.inner.take() {
-                    Some(res) => res,
-                    None => unreach!(),
-                };
-                timer.restart(&interval, ctx.waker());
-                task::Poll::Ready(Self {
-                    inner: Some((timer, interval)),
-                })
-            },
+                let interval = self.interval;
+                self.timer.restart(&interval, ctx.waker());
+                task::Poll::Ready(())
+            }
             task::Poll::Pending => task::Poll::Pending,
         }
     }

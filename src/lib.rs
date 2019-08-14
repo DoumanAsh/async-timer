@@ -6,13 +6,14 @@
 //!
 //! ## Primitives
 //!
-//! - [Timed](timed/struct.Timed.html) - A wrapper over future that allows to limit time for the future to resolve.
-//! - [Interval](interval/struct.Interval.html) - Periodic timer, that on each completition returns itself to poll once again with the same interval.
+//! - [Timed](struct.Timed.html) - A wrapper over future that allows to limit time for the future to resolve.
+//! - [Interval](struct.Interval.html) - Periodic timer, that on each completition returns itself to poll once again with the same interval.
 //!
 //! ## Features
 //!
 //! - `tokio_on` - Enables implementations that require platform's event loop
 #![warn(missing_docs)]
+#![feature(async_await)]
 
 #![cfg_attr(feature = "no_std", no_std)]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::style))]
@@ -24,12 +25,26 @@ extern crate alloc;
 #[allow(unused)]
 use std as alloc;
 
+use core::{time, future};
+
 #[macro_use]
 mod utils;
 pub mod oneshot;
-pub mod timed;
-pub mod interval;
+mod timed;
+mod interval;
 
 pub use oneshot::Oneshot;
-pub use timed::Timed;
+pub use timed::{Timed, Expired};
 pub use interval::Interval;
+
+///Run future in timed fashion using default Platform timer.
+pub fn timed<F: future::Future>(job: F, timeout: time::Duration) -> impl future::Future<Output=Result<F::Output, Expired<F, oneshot::Timer>>> {
+    unsafe {
+        Timed::platform_new_unchecked(job, timeout).wait()
+    }
+}
+
+///Creates interval with default Platform timer.
+pub fn interval(interval: time::Duration) -> impl future::Future<Output=Interval<oneshot::Timer>> {
+    Interval::platform_new(interval).next()
+}
