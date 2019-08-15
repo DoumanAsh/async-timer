@@ -6,9 +6,6 @@ use std::time;
 
 #[tokio::test]
 async fn test_interval() {
-    #[cfg(feature = "tokio")]
-    let _reactor = tokio_reactor::Reactor::new().unwrap();
-
     let mut interval = Interval::platform_new(time::Duration::from_secs(1));
 
     let before = time::SystemTime::now();
