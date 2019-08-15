@@ -27,6 +27,12 @@ steps:
     displayName: Windows install rust
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
+  - script: |
+      rustup target add wasm32-unknown-unknown
+      cargo check --target wasm32-unknown-unknown --features no_std
+    displayName: Cargo check no_std wasm
+    condition: eq( variables['Agent.OS'], 'Linux' )
+
   - script: cargo check --all --features no_std
     displayName: Cargo check no_std
     condition: ne( variables['Agent.OS'], 'Linux' )
