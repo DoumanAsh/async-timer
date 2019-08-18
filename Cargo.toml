@@ -8,7 +8,7 @@ readme = "README.md"
 repository = "https://github.com/DoumanAsh/async-timer"
 license = "Apache-2.0"
 keywords = ["timer", "async", "wasm"]
-categories = ["asynchronous", "WebAssembly", "No standard library"]
+categories = ["asynchronous", "wasm", "no-std"]
 include = [
     "**/*.rs",
     "Cargo.toml",
