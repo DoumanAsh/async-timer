@@ -1,6 +1,6 @@
 [package]
 name = "async-timer"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
 description = "Timers for Rust async story"
@@ -20,12 +20,12 @@ default = []
 # Requires alloc
 no_std = []
 # Enables usage of tokio
-tokio_on = ["mio", "tokio-reactor", "nix"]
+tokio_on = ["mio", "tokio-net", "nix"]
 
 [target.'cfg(any(target_os = "macos", target_os = "ios", unix))'.dependencies]
 libc = "0.2.60"
 mio = { version = "0.6", optional = true }
-tokio-reactor = { version = "0.2.0-alpha", optional = true }
+tokio-net = { version = "0.2.0-alpha.2", default-features = false, optional = true }
 
 #kqueue needs nix
 [target.'cfg(any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
@@ -40,4 +40,4 @@ features = ["threadpoolapiset"]
 
 [dev-dependencies]
 futures-preview = "0.3.0-alpha"
-tokio = "0.2.0-alpha"
+tokio = "0.2.0-alpha.2"
