@@ -6,7 +6,7 @@ core::compile_error!("no_std is not supported for kqueue implementation");
 use core::{task, time};
 use core::pin::Pin;
 use core::future::Future;
-use std::io;
+use crate::std::io;
 
 use libc::{c_int};
 

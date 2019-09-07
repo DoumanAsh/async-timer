@@ -2,7 +2,7 @@
 
 use async_timer::{Interval};
 
-use std::time;
+use core::time;
 
 #[tokio::test]
 async fn test_interval() {

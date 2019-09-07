@@ -43,15 +43,15 @@ mod ffi {
 const TIMER_SIG: libc::c_int = 40;
 
 fn init() {
-    let mut sa_mask: libc::sigset_t = unsafe { mem::uninitialized() };
+    let mut sa_mask = mem::MaybeUninit::<libc::sigset_t>::uninit();
     unsafe {
-        libc::sigemptyset(&mut sa_mask);
+        libc::sigemptyset(sa_mask.as_mut_ptr());
     }
 
     let timer_sig = libc::sigaction {
         sa_flags: libc::SA_SIGINFO,
         sa_sigaction: ffi::timer_handler as usize,
-        sa_mask,
+        sa_mask: unsafe { sa_mask.assume_init() },
         #[cfg(any(target_os = "linux", target_os = "android"))]
         sa_restorer: None,
     };
@@ -113,7 +113,8 @@ pub struct PosixTimer {
 
 impl super::Oneshot for PosixTimer {
     fn new(timeout: time::Duration) -> Self {
-        static RUNTIME: std::sync::Once = std::sync::Once::new();
+        use crate::std::sync::Once;
+        static RUNTIME: Once = Once::new();
 
         debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
 

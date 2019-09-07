@@ -147,7 +147,7 @@ impl<F: Future, T: Oneshot> Future for Expired<F, T> {
 impl<F: Future + Unpin, T: Oneshot> Unpin for Expired<F, T> {}
 
 #[cfg(not(feature = "no_std"))]
-impl<F, T: Oneshot> std::error::Error for Expired<F, T> {}
+impl<F, T: Oneshot> crate::std::error::Error for Expired<F, T> {}
 impl<F, T: Oneshot> fmt::Debug for Expired<F, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)

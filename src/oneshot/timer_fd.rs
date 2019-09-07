@@ -6,7 +6,7 @@ core::compile_error!("no_std is not supported for timerfd implementation");
 use core::{task, mem, ptr, time};
 use core::pin::Pin;
 use core::future::Future;
-use std::io;
+use crate::std::io;
 
 use libc::{c_int};
 

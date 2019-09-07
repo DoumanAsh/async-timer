@@ -3,7 +3,7 @@
 use async_timer::{Timed};
 use async_timer::oneshot::{Oneshot, Timer};
 
-use std::time;
+use core::time;
 
 #[tokio::test]
 async fn test_timed() {
