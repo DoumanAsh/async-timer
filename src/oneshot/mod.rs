@@ -27,7 +27,7 @@ use core::future::Future;
 /// use async_timer::oneshot::{Oneshot, Timer};
 /// use futures::executor::block_on;
 ///
-/// use core::time;
+/// use std::time;
 ///
 /// let work = Timer::new(time::Duration::from_secs(2));
 ///

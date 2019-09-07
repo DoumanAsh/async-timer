@@ -40,4 +40,4 @@ features = ["threadpoolapiset"]
 
 [dev-dependencies]
 futures-preview = "0.3.0-alpha"
-tokio = "0.2.0-alpha.2"
+cute-async = { version = "0.3", features = ["tokio"] }
