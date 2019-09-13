@@ -107,7 +107,7 @@ impl TimerHandle {
         }
     }
 
-    fn set_delay(&mut self, timeout: &time::Duration) {
+    fn set_delay(&mut self, timeout: time::Duration) {
         self.suspend();
 
         unsafe {
@@ -162,12 +162,12 @@ impl super::Oneshot for AppleTimer {
         }
     }
 
-    fn restart(&mut self, new_value: &time::Duration, waker: &task::Waker) {
+    fn restart(&mut self, new_value: time::Duration, waker: &task::Waker) {
         debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = *new_value;
+                *timeout = new_value;
             },
             State::Running(ref mut fd, ref state) => {
                 fd.set_delay(new_value);

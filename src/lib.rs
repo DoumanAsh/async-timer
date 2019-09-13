@@ -42,6 +42,6 @@ pub fn timed<F: future::Future>(job: F, timeout: time::Duration) -> impl future:
 }
 
 ///Creates interval with default Platform timer.
-pub fn interval(interval: time::Duration) -> impl future::Future<Output=Interval<oneshot::Timer>> {
+pub fn interval(interval: time::Duration) -> Interval<oneshot::Timer> {
     Interval::platform_new(interval)
 }

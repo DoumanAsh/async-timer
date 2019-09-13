@@ -28,7 +28,7 @@ impl Drop for TimerHandle {
     }
 }
 
-fn time_create(timeout: &time::Duration, state: *const TimerState) -> TimerHandle {
+fn time_create(timeout: time::Duration, state: *const TimerState) -> TimerHandle {
     let timeout = timeout.as_millis() as u32;
 
     let cb = wasm_bindgen::closure::Closure::once(move || unsafe {
@@ -81,12 +81,12 @@ impl super::Oneshot for WebTimer {
         }
     }
 
-    fn restart(&mut self, new_value: &time::Duration, waker: &task::Waker) {
+    fn restart(&mut self, new_value: time::Duration, waker: &task::Waker) {
         debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = *new_value
+                *timeout = new_value
             },
             State::Running(ref mut fd, ref state) => {
                 unsafe { (**state).register(waker) };
@@ -106,7 +106,7 @@ impl Future for WebTimer {
                 state.register(ctx.waker());
 
                 let state = Box::into_raw(Box::new(state));
-                let fd = time_create(timeout, state);
+                let fd = time_create(*timeout, state);
 
                 State::Running(fd, state)
             },

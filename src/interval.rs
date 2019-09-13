@@ -1,7 +1,7 @@
 //!Interval module
 
 use core::future::Future;
-use core::{task, time, mem};
+use core::{task, time};
 use core::pin::Pin;
 
 use crate::oneshot::Oneshot;
@@ -18,8 +18,6 @@ use crate::oneshot::Timer as PlatformTimer;
 ///## Usage
 ///
 ///```rust, no_run
-///#![feature(async_await)]
-///
 ///async fn job() {
 ///}
 ///
@@ -29,17 +27,16 @@ use crate::oneshot::Timer as PlatformTimer;
 ///
 ///    while times < 5 {
 ///        job().await;
-///        interval = interval.await;
+///        interval.as_mut().await;
 ///        times += 1;
 ///    }
 ///}
 ///```
 #[must_use = "Interval does nothing unless polled"]
-pub enum Interval<T=PlatformTimer> {
-    #[doc(hidden)]
-    Ongoing(T, time::Duration),
-    #[doc(hidden)]
-    Stopped,
+pub struct Interval<T=PlatformTimer> {
+    timer: T,
+    ///Timer interval, change to this value will be reflected on next restart of timer.
+    pub interval: time::Duration,
 }
 
 impl Interval {
@@ -53,28 +50,42 @@ impl Interval {
 impl<T: Oneshot> Interval<T> {
     ///Creates new instance with specified timer type.
     pub fn new(interval: time::Duration) -> Self {
-        Interval::Ongoing(T::new(interval), interval)
+        Self {
+            timer: T::new(interval),
+            interval,
+        }
+    }
+
+    #[inline(always)]
+    ///Stops interval
+    pub fn cancel(&mut self) {
+        self.timer.cancel()
+    }
+
+    ///Restarts interval
+    pub fn restart(&mut self, ctx: &task::Context) {
+        let interval = self.interval;
+        self.timer.restart(interval, ctx.waker());
+    }
+
+
+    #[inline(always)]
+    ///Gets mutable reference
+    pub fn as_mut(&mut self) -> &mut Self {
+        self
     }
 }
 
-impl<T: Oneshot> Future for Interval<T> {
-    type Output = Self;
+impl<T: Oneshot> Future for &'_ mut Interval<T> {
+    type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        let mut state = Interval::Stopped;
-        mem::swap(self.as_mut().get_mut(), &mut state);
-        match state {
-            Interval::Ongoing(mut timer, interval) => match Future::poll(Pin::new(&mut timer), ctx) {
-                task::Poll::Ready(()) => {
-                    timer.restart(&interval, ctx.waker());
-                    task::Poll::Ready(Interval::Ongoing(timer, interval))
-                },
-                task::Poll::Pending => {
-                    *self = Interval::Ongoing(timer, interval);
-                    task::Poll::Pending
-                },
+        match Future::poll(Pin::new(&mut self.timer), ctx) {
+            task::Poll::Ready(()) => {
+                self.restart(ctx);
+                task::Poll::Ready(())
             },
-            Interval::Stopped => task::Poll::Pending
+            task::Poll::Pending => task::Poll::Pending,
         }
     }
 }

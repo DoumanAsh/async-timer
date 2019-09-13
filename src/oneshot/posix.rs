@@ -79,7 +79,7 @@ fn time_create(state: *mut TimerState) -> RawFd {
     res
 }
 
-fn set_timer_value(fd: RawFd, timeout: &time::Duration) {
+fn set_timer_value(fd: RawFd, timeout: time::Duration) {
     let it_value = libc::timespec {
         tv_sec: timeout.as_secs() as libc::time_t,
         #[cfg(not(any(target_os = "openbsd", target_os = "netbsd")))]
@@ -148,12 +148,12 @@ impl super::Oneshot for PosixTimer {
         }
     }
 
-    fn restart(&mut self, new_value: &time::Duration, waker: &task::Waker) {
+    fn restart(&mut self, new_value: time::Duration, waker: &task::Waker) {
         debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = *new_value;
+                *timeout = new_value;
             },
             State::Running(fd, ref mut state) => {
                 state.register(waker);
@@ -175,7 +175,7 @@ impl Future for PosixTimer {
                 let state = unsafe { Box::from_raw(state) };
                 state.register(ctx.waker());
 
-                set_timer_value(fd, timeout);
+                set_timer_value(fd, *timeout);
 
                 State::Running(fd, state)
             },

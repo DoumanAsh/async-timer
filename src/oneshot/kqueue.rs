@@ -21,7 +21,7 @@ impl RawTimer {
         Self(fd)
     }
 
-    fn set(&self, time: &time::Duration) {
+    fn set(&self, time: time::Duration) {
         use nix::sys::event::*;
 
         let flags = EventFlag::EV_ADD | EventFlag::EV_ENABLE | EventFlag::EV_ONESHOT;
@@ -122,12 +122,12 @@ impl super::Oneshot for KqueueTimer {
         self.fd.get_mut().unset();
     }
 
-    fn restart(&mut self, new_value: &time::Duration, _: &task::Waker) {
+    fn restart(&mut self, new_value: time::Duration, _: &task::Waker) {
         debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = *new_value;
+                *timeout = new_value;
             },
             State::Running(ref mut is_finished) => {
                 *is_finished = false;
