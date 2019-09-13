@@ -36,7 +36,7 @@ fn time_create(state: *mut TimerState) -> ffi::PTP_TIMER {
     timer
 }
 
-fn set_timer_value(fd: ffi::PTP_TIMER, timeout: &time::Duration) {
+fn set_timer_value(fd: ffi::PTP_TIMER, timeout: time::Duration) {
     let mut ticks = i64::from(timeout.subsec_nanos() / 100);
     ticks += (timeout.as_secs() * 10_000_000) as i64;
     let ticks = -ticks;
@@ -90,12 +90,12 @@ impl super::Oneshot for WinTimer {
         }
     }
 
-    fn restart(&mut self, new_value: &time::Duration, waker: &task::Waker) {
+    fn restart(&mut self, new_value: time::Duration, waker: &task::Waker) {
         debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = *new_value;
+                *timeout = new_value;
             },
             State::Running(fd, ref mut state) => {
                 state.register(waker);
@@ -117,7 +117,7 @@ impl Future for WinTimer {
                 let state = unsafe { Box::from_raw(state) };
                 state.register(ctx.waker());
 
-                set_timer_value(fd, timeout);
+                set_timer_value(fd, *timeout);
 
                 State::Running(fd, state)
             },

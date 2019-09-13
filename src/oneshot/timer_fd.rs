@@ -65,7 +65,7 @@ enum State {
     Running(bool),
 }
 
-fn set_timer_value(fd: &RawTimer, timeout: &time::Duration) {
+fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
     let it_value = libc::timespec {
         tv_sec: timeout.as_secs() as libc::time_t,
         tv_nsec: libc::suseconds_t::from(timeout.subsec_nanos()),
@@ -113,12 +113,12 @@ impl super::Oneshot for TimerFd {
         self.fd.get_mut().set(unsafe { mem::zeroed() });
     }
 
-    fn restart(&mut self, new_value: &time::Duration, _: &task::Waker) {
+    fn restart(&mut self, new_value: time::Duration, _: &task::Waker) {
         debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
-                *timeout = *new_value;
+                *timeout = new_value;
             },
             State::Running(ref mut is_finished) => {
                 *is_finished = false;
@@ -135,7 +135,7 @@ impl Future for TimerFd {
         loop {
             self.state = match &self.state {
                 State::Init(ref timeout) => {
-                    set_timer_value(self.fd.get_ref(), timeout);
+                    set_timer_value(self.fd.get_ref(), *timeout);
                     State::Running(false)
                 },
                 State::Running(false) => match Pin::new(&mut self.fd).poll_read_ready(ctx, mio::Ready::readable()) {
