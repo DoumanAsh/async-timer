@@ -144,7 +144,7 @@ impl Future for KqueueTimer {
         loop {
             self.state = match &self.state {
                 State::Init(ref timeout) => {
-                    self.fd.get_ref().set(timeout);
+                    self.fd.get_ref().set(*timeout);
                     State::Running(false)
                 },
                 State::Running(false) => match Pin::new(&mut self.fd).poll_read_ready(ctx, mio::Ready::readable()) {
