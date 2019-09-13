@@ -12,8 +12,6 @@ Minimal Rust version: 1.36
 ## Timed
 
 ```rust
-#![feature(async_await)]
-
 async fn job() {
 }
 
@@ -33,8 +31,6 @@ async fn do_job() {
 ## Interval
 
 ```rust
-#![feature(async_await)]
-
 async fn job() {
 }
 
@@ -44,7 +40,7 @@ async fn do_a_while() {
 
     while times < 5 {
         job().await;
-        interval = interval.await;
+        interval.as_mut().await;
         times += 1;
     }
 }

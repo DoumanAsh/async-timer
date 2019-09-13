@@ -41,5 +41,5 @@ steps:
     displayName: cargo test Event loop timer
     condition: or( eq(variables['Agent.OS'], 'Darwin'), eq(variables['Agent.OS'], 'Linux') )
 
-  - script: cargo test --all
+  - script: cargo test --all --features stream
     displayName: Cargo test

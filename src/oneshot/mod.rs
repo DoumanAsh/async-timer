@@ -25,18 +25,19 @@ use core::future::Future;
 ///
 ///```rust, no_run
 /// use async_timer::oneshot::{Oneshot, Timer};
-/// use futures::executor::block_on;
 ///
 /// use std::time;
 ///
-/// let work = Timer::new(time::Duration::from_secs(2));
+/// async fn do_stuff() {
+///     let work = Timer::new(time::Duration::from_secs(2));
 ///
-/// let before = time::SystemTime::now();
-/// block_on(work);
-/// let after = time::SystemTime::now();
-/// let diff = after.duration_since(before).unwrap();
+///     let before = time::SystemTime::now();
+///     work.await;
+///     let after = time::SystemTime::now();
+///     let diff = after.duration_since(before).unwrap();
 ///
-/// assert_eq!(diff.as_secs(), 2);
+///     assert_eq!(diff.as_secs(), 2);
+/// }
 ///
 ///```
 pub trait Oneshot: Send + Sync + Unpin + Future<Output=()> {

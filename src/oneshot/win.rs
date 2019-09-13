@@ -98,8 +98,8 @@ impl super::Oneshot for WinTimer {
                 *timeout = new_value;
             },
             State::Running(fd, ref mut state) => {
-                state.register(waker);
                 set_timer_value(*fd, new_value);
+                state.register(waker);
             }
         }
     }

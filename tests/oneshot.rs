@@ -28,7 +28,7 @@ fn test_tons_oneshot() {
         }
 
         let before = time::SystemTime::now();
-        futures::future::join_all(jobs).await;
+        futures_util::future::join_all(jobs).await;
         let after = time::SystemTime::now();
         let diff = after.duration_since(before).unwrap();
 
