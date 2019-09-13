@@ -21,6 +21,12 @@ default = []
 no_std = []
 # Enables usage of tokio
 tokio_on = ["mio", "tokio-net", "nix"]
+# Enables Stream implementation
+stream = ["futures-core-preview"]
+
+[dependencies.futures-core-preview]
+version = "0.3.0-alpha"
+optional = true
 
 [target.'cfg(any(target_os = "macos", target_os = "ios", unix))'.dependencies]
 libc = "0.2.60"
@@ -39,5 +45,5 @@ version = "0.3"
 features = ["threadpoolapiset"]
 
 [dev-dependencies]
-futures-preview = "0.3.0-alpha"
+futures-util-preview = "0.3.0-alpha"
 cute-async = { version = "0.3", features = ["tokio"] }

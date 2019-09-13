@@ -22,3 +22,27 @@ fn test_interval() {
         assert!(diff.as_millis() >= 750 && diff.as_millis() <= 1_250);
     });
 }
+
+#[cfg(feature = "stream")]
+#[test]
+fn test_stream_interval() {
+    use futures_util::stream::StreamExt;
+
+    cute_async::runtime::tokio(async {
+        let mut interval = Interval::platform_new(time::Duration::from_secs(1));
+
+        let before = time::SystemTime::now();
+        interval.next().await;
+        let after = time::SystemTime::now();
+        let diff = after.duration_since(before).unwrap();
+
+        assert!(diff.as_millis() >= 750 && diff.as_millis() <= 1_250);
+
+        let before = time::SystemTime::now();
+        interval.next().await;
+        let after = time::SystemTime::now();
+        let diff = after.duration_since(before).unwrap();
+
+        assert!(diff.as_millis() >= 750 && diff.as_millis() <= 1_250);
+    });
+}
