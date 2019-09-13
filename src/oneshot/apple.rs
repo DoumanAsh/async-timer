@@ -189,7 +189,7 @@ impl Future for AppleTimer {
                 let state = unsafe { Box::from_raw(state) };
                 state.register(ctx.waker());
 
-                fd.set_delay(timeout);
+                fd.set_delay(*timeout);
 
                 State::Running(fd, state)
             },
