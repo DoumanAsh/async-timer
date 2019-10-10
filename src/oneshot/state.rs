@@ -1,29 +1,29 @@
 //!State module
 
 use core::cell::UnsafeCell;
-use core::sync::atomic::{AtomicUsize};
+use core::sync::atomic::{AtomicU8};
 use core::sync::atomic::Ordering::{Acquire, Release, AcqRel};
 use core::task::{self, Waker};
 
 // Based on futures-rs
 struct AtomicWaker {
-    state: AtomicUsize,
+    state: AtomicU8,
     waker: UnsafeCell<Option<Waker>>,
 }
 
 /// Idle state
-const WAITING: usize = 0;
+const WAITING: u8 = 0;
 
 /// A new waker value is being registered with the `AtomicWaker` cell.
-const REGISTERING: usize = 0b01;
+const REGISTERING: u8 = 0b01;
 
 /// The waker currently registered with the `AtomicWaker` cell is being woken.
-const WAKING: usize = 0b10;
+const WAKING: u8 = 0b10;
 
 impl AtomicWaker {
     const fn new() -> Self {
         Self {
-            state: AtomicUsize::new(WAITING),
+            state: AtomicU8::new(WAITING),
             waker: UnsafeCell::new(None),
         }
     }
@@ -89,16 +89,10 @@ impl AtomicWaker {
     }
 
     fn is_registered(&self) -> bool {
-        match self.state.fetch_or(WAKING, AcqRel) {
-            WAITING => {
-                let res = unsafe { (*self.waker.get()).is_some() };
-                self.state.fetch_and(!WAKING, Release);
-                res
-            }
-            state => {
-                debug_assert!(state == REGISTERING || state == REGISTERING | WAKING || state == WAKING);
-                true
-            }
+        match self.state.load(Acquire) {
+            WAITING => unsafe { (*self.waker.get()).is_some() },
+            //If it is WAKING then we'll just wake up anyway
+            _ => true,
         }
     }
 
