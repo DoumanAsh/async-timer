@@ -91,8 +91,8 @@ impl AtomicWaker {
     fn is_registered(&self) -> bool {
         match self.state.load(Acquire) {
             WAITING => unsafe { (*self.waker.get()).is_some() },
-            //If it is WAKING then we'll just wake up anyway
-            _ => true,
+            //If we're WAKING then early false
+            state => (state & WAKING) == 0,
         }
     }
 
