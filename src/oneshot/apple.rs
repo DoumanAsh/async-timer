@@ -170,8 +170,8 @@ impl super::Oneshot for AppleTimer {
                 *timeout = new_value;
             },
             State::Running(ref mut fd, ref state) => {
-                fd.set_delay(new_value);
                 state.register(waker);
+                fd.set_delay(new_value);
             },
         }
     }

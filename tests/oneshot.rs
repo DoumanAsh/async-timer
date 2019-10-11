@@ -50,3 +50,12 @@ fn test_smol_oneshot() {
         assert!(diff.as_millis() >= 250 && diff.as_millis() <= 750);
     });
 }
+
+#[test]
+fn test_nano_oneshot() {
+    cute_async::runtime::tokio(async {
+        let work = Timer::new(time::Duration::from_nanos(604000));
+        assert!(!work.is_expired());
+        work.await;
+    });
+}
