@@ -20,13 +20,10 @@ mod sys {
 
     extern "C" {
         pub fn timerfd_create(clockid: libc::clockid_t, flags: libc::c_int) -> libc::c_int;
-        pub fn timerfd_settime(
-            timerid: libc::c_int,
-            flags: libc::c_int,
-            new_value: *const itimerspec,
-            old_value: *mut itimerspec,
-        ) -> libc::c_int;
+        pub fn timerfd_settime(timerid: libc::c_int, flags: libc::c_int, new_value: *const itimerspec, old_value: *mut itimerspec) -> libc::c_int;
     }
+
+    pub const TFD_NONBLOCK: libc::c_int = libc::O_NONBLOCK;
 }
 
 #[cfg(not(target_os = "android"))]
@@ -36,7 +33,7 @@ struct RawTimer(c_int);
 
 impl RawTimer {
     fn new() -> Self {
-        let fd = unsafe { sys::timerfd_create(libc::CLOCK_MONOTONIC, libc::O_NONBLOCK) };
+        let fd = unsafe { sys::timerfd_create(libc::CLOCK_MONOTONIC, sys::TFD_NONBLOCK) };
 
         assert_ne!(fd, -1);
         Self(fd)
@@ -63,23 +60,11 @@ impl RawTimer {
 }
 
 impl mio::Evented for RawTimer {
-    fn register(
-        &self,
-        poll: &mio::Poll,
-        token: mio::Token,
-        interest: mio::Ready,
-        opts: mio::PollOpt,
-    ) -> io::Result<()> {
+    fn register(&self, poll: &mio::Poll, token: mio::Token, interest: mio::Ready, opts: mio::PollOpt) -> io::Result<()> {
         mio::unix::EventedFd(&self.0).register(poll, token, interest, opts)
     }
 
-    fn reregister(
-        &self,
-        poll: &mio::Poll,
-        token: mio::Token,
-        interest: mio::Ready,
-        opts: mio::PollOpt,
-    ) -> io::Result<()> {
+    fn reregister(&self, poll: &mio::Poll, token: mio::Token, interest: mio::Ready, opts: mio::PollOpt) -> io::Result<()> {
         mio::unix::EventedFd(&self.0).reregister(poll, token, interest, opts)
     }
 
@@ -181,13 +166,9 @@ impl Future for TimerFd {
                 State::Running(false) => {
                     match Pin::new(&mut self.fd).poll_read_ready(ctx, mio::Ready::readable()) {
                         task::Poll::Pending => return task::Poll::Pending,
-                        task::Poll::Ready(ready) => match ready
-                            .map(|ready| ready.is_readable())
-                            .expect("timerfd cannot be ready")
-                        {
+                        task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("timerfd cannot be ready") {
                             true => {
-                                let _ = Pin::new(&mut self.fd)
-                                    .clear_read_ready(ctx, mio::Ready::readable());
+                                let _ = Pin::new(&mut self.fd).clear_read_ready(ctx, mio::Ready::readable());
                                 match self.fd.get_mut().read() {
                                     0 => return task::Poll::Pending,
                                     _ => return task::Poll::Ready(()),
