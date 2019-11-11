@@ -3,25 +3,47 @@
 #[cfg(feature = "no_std")]
 core::compile_error!("no_std is not supported for timerfd implementation");
 
-use core::{task, mem, ptr, time};
-use core::pin::Pin;
-use core::future::Future;
 use crate::std::io;
+use core::future::Future;
+use core::pin::Pin;
+use core::{mem, ptr, task, time};
 
-use libc::{c_int};
+use libc::c_int;
+
+#[cfg(target_os = "android")]
+mod sys {
+    #[repr(C)]
+    pub struct itimerspec {
+        pub it_interval: libc::timespec,
+        pub it_value: libc::timespec,
+    }
+
+    extern "C" {
+        pub fn timerfd_create(clockid: libc::clockid_t, flags: libc::c_int) -> libc::c_int;
+        pub fn timerfd_settime(
+            timerid: libc::c_int,
+            flags: libc::c_int,
+            new_value: *const itimerspec,
+            old_value: *mut itimerspec,
+        ) -> libc::c_int;
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+use libc as sys;
 
 struct RawTimer(c_int);
 
 impl RawTimer {
     fn new() -> Self {
-        let fd = unsafe { libc::timerfd_create(libc::CLOCK_MONOTONIC, libc::TFD_NONBLOCK) };
+        let fd = unsafe { sys::timerfd_create(libc::CLOCK_MONOTONIC, libc::O_NONBLOCK) };
 
         assert_ne!(fd, -1);
         Self(fd)
     }
 
-    fn set(&self, timer: libc::itimerspec) {
-        let ret = unsafe { libc::timerfd_settime(self.0, 0, &timer, ptr::null_mut()) };
+    fn set(&self, timer: sys::itimerspec) {
+        let ret = unsafe { sys::timerfd_settime(self.0, 0, &timer, ptr::null_mut()) };
         assert_ne!(ret, -1);
     }
 
@@ -34,18 +56,30 @@ impl RawTimer {
                     io::ErrorKind::WouldBlock => 0,
                     _ => panic!("Unexpected read error: {}", error),
                 }
-            },
+            }
             _ => read_num as usize,
         }
     }
 }
 
 impl mio::Evented for RawTimer {
-    fn register(&self, poll: &mio::Poll, token: mio::Token, interest: mio::Ready, opts: mio::PollOpt) -> io::Result<()> {
+    fn register(
+        &self,
+        poll: &mio::Poll,
+        token: mio::Token,
+        interest: mio::Ready,
+        opts: mio::PollOpt,
+    ) -> io::Result<()> {
         mio::unix::EventedFd(&self.0).register(poll, token, interest, opts)
     }
 
-    fn reregister(&self, poll: &mio::Poll, token: mio::Token, interest: mio::Ready, opts: mio::PollOpt) -> io::Result<()> {
+    fn reregister(
+        &self,
+        poll: &mio::Poll,
+        token: mio::Token,
+        interest: mio::Ready,
+        opts: mio::PollOpt,
+    ) -> io::Result<()> {
         mio::unix::EventedFd(&self.0).reregister(poll, token, interest, opts)
     }
 
@@ -71,7 +105,7 @@ fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
         tv_nsec: libc::suseconds_t::from(timeout.subsec_nanos()),
     };
 
-    let new_value = libc::itimerspec {
+    let new_value = sys::itimerspec {
         it_interval: unsafe { mem::zeroed() },
         it_value,
     };
@@ -87,7 +121,10 @@ pub struct TimerFd {
 
 impl super::Oneshot for TimerFd {
     fn new(timeout: time::Duration) -> Self {
-        debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
+        debug_assert!(
+            !(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0),
+            "Zero timeout makes no sense"
+        );
 
         Self {
             fd: tokio_net::util::PollEvented::new(RawTimer::new()),
@@ -114,16 +151,19 @@ impl super::Oneshot for TimerFd {
     }
 
     fn restart(&mut self, new_value: time::Duration, _: &task::Waker) {
-        debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
+        debug_assert!(
+            !(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0),
+            "Zero timeout makes no sense"
+        );
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
                 *timeout = new_value;
-            },
+            }
             State::Running(ref mut is_finished) => {
                 *is_finished = false;
                 set_timer_value(&self.fd.get_ref(), new_value);
-            },
+            }
         }
     }
 }
@@ -137,20 +177,26 @@ impl Future for TimerFd {
                 State::Init(ref timeout) => {
                     set_timer_value(self.fd.get_ref(), *timeout);
                     State::Running(false)
-                },
-                State::Running(false) => match Pin::new(&mut self.fd).poll_read_ready(ctx, mio::Ready::readable()) {
-                    task::Poll::Pending => return task::Poll::Pending,
-                    task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("timerfd cannot be ready") {
-                        true => {
-                            let _ = Pin::new(&mut self.fd).clear_read_ready(ctx, mio::Ready::readable());
-                            match self.fd.get_mut().read() {
-                                0 => return task::Poll::Pending,
-                                _ => return task::Poll::Ready(()),
+                }
+                State::Running(false) => {
+                    match Pin::new(&mut self.fd).poll_read_ready(ctx, mio::Ready::readable()) {
+                        task::Poll::Pending => return task::Poll::Pending,
+                        task::Poll::Ready(ready) => match ready
+                            .map(|ready| ready.is_readable())
+                            .expect("timerfd cannot be ready")
+                        {
+                            true => {
+                                let _ = Pin::new(&mut self.fd)
+                                    .clear_read_ready(ctx, mio::Ready::readable());
+                                match self.fd.get_mut().read() {
+                                    0 => return task::Poll::Pending,
+                                    _ => return task::Poll::Ready(()),
+                                }
                             }
+                            false => return task::Poll::Pending,
                         },
-                        false => return task::Poll::Pending,
                     }
-                },
+                }
                 State::Running(true) => return task::Poll::Ready(()),
             }
         }
