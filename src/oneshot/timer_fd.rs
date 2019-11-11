@@ -10,11 +10,8 @@ use core::{mem, ptr, task, time};
 
 use libc::c_int;
 
-type RawFd = usize;
-
-mod ffi {
-    use super::*;
-
+#[cfg(target_os = "android")]
+mod sys {
     #[repr(C)]
     pub struct itimerspec {
         pub it_interval: libc::timespec,
@@ -24,7 +21,7 @@ mod ffi {
     extern "C" {
         pub fn timerfd_create(clockid: libc::clockid_t, flags: libc::c_int) -> libc::c_int;
         pub fn timerfd_settime(
-            timerid: RawFd,
+            timerid: libc::c_int,
             flags: libc::c_int,
             new_value: *const itimerspec,
             old_value: *mut itimerspec,
@@ -32,34 +29,21 @@ mod ffi {
     }
 }
 
+#[cfg(not(target_os = "android"))]
+use libc as sys;
+
 struct RawTimer(c_int);
 
 impl RawTimer {
-    #[cfg(not(target_os = "android"))]
     fn new() -> Self {
-        let fd = unsafe { libc::timerfd_create(libc::CLOCK_MONOTONIC, libc::TFD_NONBLOCK) };
+        let fd = unsafe { sys::timerfd_create(libc::CLOCK_MONOTONIC, libc::O_NONBLOCK) };
 
         assert_ne!(fd, -1);
         Self(fd)
     }
 
-    #[cfg(target_os = "android")]
-    fn new() -> Self {
-        let fd = unsafe { ffi::timerfd_create(libc::CLOCK_MONOTONIC, libc::O_NONBLOCK) };
-
-        assert_ne!(fd, -1);
-        Self(fd)
-    }
-
-    #[cfg(not(target_os = "android"))]
-    fn set(&self, timer: libc::itimerspec) {
-        let ret = unsafe { libc::timerfd_settime(self.0, 0, &timer, ptr::null_mut()) };
-        assert_ne!(ret, -1);
-    }
-
-    #[cfg(target_os = "android")]
-    fn set(&self, timer: ffi::itimerspec) {
-        let ret = unsafe { ffi::timerfd_settime(self.0 as usize, 0, &timer, ptr::null_mut()) };
+    fn set(&self, timer: sys::itimerspec) {
+        let ret = unsafe { sys::timerfd_settime(self.0, 0, &timer, ptr::null_mut()) };
         assert_ne!(ret, -1);
     }
 
@@ -115,29 +99,13 @@ enum State {
     Running(bool),
 }
 
-#[cfg(not(target_os = "android"))]
 fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
     let it_value = libc::timespec {
         tv_sec: timeout.as_secs() as libc::time_t,
         tv_nsec: libc::suseconds_t::from(timeout.subsec_nanos()),
     };
 
-    let new_value = libc::itimerspec {
-        it_interval: unsafe { mem::zeroed() },
-        it_value,
-    };
-
-    fd.set(new_value);
-}
-
-#[cfg(target_os = "android")]
-fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
-    let it_value = libc::timespec {
-        tv_sec: timeout.as_secs() as libc::time_t,
-        tv_nsec: libc::suseconds_t::from(timeout.subsec_nanos()),
-    };
-
-    let new_value = ffi::itimerspec {
+    let new_value = sys::itimerspec {
         it_interval: unsafe { mem::zeroed() },
         it_value,
     };
