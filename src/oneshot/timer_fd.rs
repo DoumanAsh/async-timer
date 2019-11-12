@@ -35,13 +35,13 @@ impl RawTimer {
     fn new() -> Self {
         let fd = unsafe { sys::timerfd_create(libc::CLOCK_MONOTONIC, sys::TFD_NONBLOCK) };
 
-        assert_ne!(fd, -1);
+        os_assert!(fd != -1);
         Self(fd)
     }
 
     fn set(&self, timer: sys::itimerspec) {
         let ret = unsafe { sys::timerfd_settime(self.0, 0, &timer, ptr::null_mut()) };
-        assert_ne!(ret, -1);
+        os_assert!(ret != -1);
     }
 
     fn read(&self) -> usize {
@@ -106,10 +106,7 @@ pub struct TimerFd {
 
 impl super::Oneshot for TimerFd {
     fn new(timeout: time::Duration) -> Self {
-        debug_assert!(
-            !(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0),
-            "Zero timeout makes no sense"
-        );
+        debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         Self {
             fd: tokio_net::util::PollEvented::new(RawTimer::new()),
@@ -136,10 +133,7 @@ impl super::Oneshot for TimerFd {
     }
 
     fn restart(&mut self, new_value: time::Duration, _: &task::Waker) {
-        debug_assert!(
-            !(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0),
-            "Zero timeout makes no sense"
-        );
+        debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         match &mut self.state {
             State::Init(ref mut timeout) => {

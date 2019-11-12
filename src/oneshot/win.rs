@@ -31,7 +31,7 @@ fn time_create(state: *mut TimerState) -> ffi::PTP_TIMER {
     let timer = unsafe {
         ffi::CreateThreadpoolTimer(Some(timer_callback), state as *mut ffi::c_void, ptr::null_mut())
     };
-    debug_assert!(!timer.is_null());
+    os_assert!(!timer.is_null());
 
     timer
 }
