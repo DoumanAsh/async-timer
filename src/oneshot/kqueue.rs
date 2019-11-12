@@ -17,7 +17,7 @@ impl RawTimer {
         let fd = nix::sys::event::kqueue().unwrap_or(-1);
 
         //If you hit this, then most likely you run into OS imposed limit on file descriptor number
-        assert_ne!(fd, -1);
+        os_assert!(fd != -1);
         Self(fd)
     }
 

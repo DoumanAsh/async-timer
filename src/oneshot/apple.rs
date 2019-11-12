@@ -73,7 +73,7 @@ impl TimerHandle {
             ffi::dispatch_source_create(&ffi::_dispatch_source_type_timer as *const _ as ffi::dispatch_source_type_t, 0, 0, queue)
         };
 
-        assert!(!inner.is_null());
+        os_assert!(!inner.is_null());
 
         unsafe {
             ffi::dispatch_source_set_event_handler_f(inner, timer_handler);

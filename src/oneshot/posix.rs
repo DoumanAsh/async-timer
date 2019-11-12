@@ -57,7 +57,7 @@ fn init() {
     };
 
     unsafe {
-        assert_ne!(libc::sigaction(TIMER_SIG, &timer_sig, ptr::null_mut()), -1);
+        os_assert!(libc::sigaction(TIMER_SIG, &timer_sig, ptr::null_mut()) != -1);
     }
 }
 
@@ -73,7 +73,7 @@ fn time_create(state: *mut TimerState) -> RawFd {
     let mut res = 0;
 
     unsafe {
-        assert_eq!(ffi::timer_create(libc::CLOCK_MONOTONIC, &mut event, &mut res), 0);
+        os_assert!(ffi::timer_create(libc::CLOCK_MONOTONIC, &mut event, &mut res) == 0);
     }
 
     res
@@ -94,7 +94,7 @@ fn set_timer_value(fd: RawFd, timeout: time::Duration) {
     };
 
     unsafe {
-        assert_eq!(ffi::timer_settime(fd, 0, &new_value, ptr::null_mut()), 0);
+        os_assert!(ffi::timer_settime(fd, 0, &new_value, ptr::null_mut()) == 0);
     }
 }
 
