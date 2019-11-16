@@ -13,8 +13,6 @@ use crate::oneshot::Timer as PlatformTimer;
 ///# Usage
 ///
 ///```rust, no_run
-///#![feature(async_await)]
-///
 ///async fn job() {
 ///}
 ///
