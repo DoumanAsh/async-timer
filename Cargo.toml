@@ -1,6 +1,6 @@
 [package]
 name = "async-timer"
-version = "0.6.3"
+version = "0.7.0"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
 description = "Timers for Rust async story"
@@ -20,18 +20,19 @@ default = []
 # Requires alloc
 no_std = []
 # Enables usage of tokio
-tokio_on = ["mio", "tokio-net", "nix"]
+tokio_on = ["mio", "tokio", "nix"]
 # Enables Stream implementation
-stream = ["futures-core-preview"]
+stream = ["futures-core"]
 
-[dependencies.futures-core-preview]
-version = "0.3.0-alpha"
+[dependencies.futures-core]
+version = "0.3"
 optional = true
+default-features = true
 
 [target.'cfg(any(target_os = "macos", target_os = "ios", unix))'.dependencies]
 libc = "0.2.60"
 mio = { version = "0.6", optional = true }
-tokio-net = { version = "0.2.0-alpha.2", default-features = false, optional = true }
+tokio = { version = "0.2", default-features = false, optional = true, features = ["io-driver"] }
 
 #kqueue needs nix
 [target.'cfg(any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
@@ -45,5 +46,5 @@ version = "0.3"
 features = ["threadpoolapiset"]
 
 [dev-dependencies]
-futures-util-preview = "0.3.0-alpha"
-cute-async = { version = "0.3", features = ["tokio"] }
+futures-util = "0.3.0"
+tokio = { version = "0.2", features = ["macros", "rt-core"] }
