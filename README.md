@@ -1,6 +1,6 @@
 # async-timer
 
-[![Build Status](https://dev.azure.com/DoumanAsh/async-timer/_apis/build/status/DoumanAsh.async-timer?branchName=master)](https://dev.azure.com/DoumanAsh/async-timer/_build/latest?definitionId=1&branchName=master)
+![](https://github.com/DoumanAsh/async-timer/workflows/Rust/badge.svg)
 [![Crates.io](https://img.shields.io/crates/v/async-timer.svg)](https://crates.io/crates/async-timer)
 [![Documentation](https://docs.rs/async-timer/badge.svg)](https://docs.rs/crate/async-timer/)
 [![dependency status](https://deps.rs/crate/async-timer/0.6.3/status.svg)](https://deps.rs/crate/async-timer)
