@@ -100,7 +100,7 @@ fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
 
 ///Linux `timerfd` wrapper
 pub struct TimerFd {
-    fd: tokio_net::util::PollEvented<RawTimer>,
+    fd: tokio::io::PollEvented<RawTimer>,
     state: State,
 }
 
@@ -109,7 +109,7 @@ impl super::Oneshot for TimerFd {
         debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         Self {
-            fd: tokio_net::util::PollEvented::new(RawTimer::new()),
+            fd: tokio::io::PollEvented::new(RawTimer::new()).expect("To create PollEvented"),
             state: State::Init(timeout),
         }
     }
