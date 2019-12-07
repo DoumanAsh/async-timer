@@ -9,7 +9,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-18.04]
+        os: [macos-latest, windows-latest, ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v1
@@ -28,6 +28,8 @@ jobs:
 
     - name: Rust version
       run: |
+        rustup self update
+        rustup set profile minimal
         rustup update
         cargo --version
         rustc --version
