@@ -28,8 +28,6 @@ jobs:
 
     - name: Rust version
       run: |
-        rustup self update
-        rustup set profile minimal
         rustup update
         cargo --version
         rustc --version
