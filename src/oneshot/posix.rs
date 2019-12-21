@@ -10,10 +10,11 @@ use core::{mem, ptr, time, task};
 use super::state::TimerState;
 use crate::alloc::boxed::Box;
 
-type RawFd = usize;
-
 mod ffi {
     use super::*;
+
+    #[allow(non_camel_case_types)]
+    pub type timer_t = usize;
 
     #[inline(always)]
     unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
@@ -34,9 +35,9 @@ mod ffi {
     }
 
     extern "C" {
-        pub fn timer_create(clockid: libc::clockid_t, sevp: *mut libc::sigevent, timerid: *mut RawFd) -> libc::c_int;
-        pub fn timer_settime(timerid: RawFd, flags: libc::c_int, new_value: *const itimerspec, old_value: *mut itimerspec) -> libc::c_int;
-        pub fn timer_delete(timerid: RawFd);
+        pub fn timer_create(clockid: libc::clockid_t, sevp: *mut libc::sigevent, timerid: *mut timer_t) -> libc::c_int;
+        pub fn timer_settime(timerid: timer_t, flags: libc::c_int, new_value: *const itimerspec, old_value: *mut itimerspec) -> libc::c_int;
+        pub fn timer_delete(timerid: timer_t);
     }
 }
 
@@ -61,7 +62,7 @@ fn init() {
     }
 }
 
-fn time_create(state: *mut TimerState) -> RawFd {
+fn time_create(state: *mut TimerState) -> ffi::timer_t {
     let mut event: libc::sigevent = unsafe { mem::zeroed() };
 
     event.sigev_value = libc::sigval {
@@ -70,16 +71,15 @@ fn time_create(state: *mut TimerState) -> RawFd {
     event.sigev_signo = TIMER_SIG;
     event.sigev_notify = libc::SIGEV_SIGNAL;
 
-    let mut res = 0;
+    let mut res = mem::MaybeUninit::<ffi::timer_t>::uninit();
 
     unsafe {
-        os_assert!(ffi::timer_create(libc::CLOCK_MONOTONIC, &mut event, &mut res) == 0);
+        os_assert!(ffi::timer_create(libc::CLOCK_MONOTONIC, &mut event, res.as_mut_ptr()) == 0);
+        res.assume_init()
     }
-
-    res
 }
 
-fn set_timer_value(fd: RawFd, timeout: time::Duration) {
+fn set_timer_value(fd: ffi::timer_t, timeout: time::Duration) {
     let it_value = libc::timespec {
         tv_sec: timeout.as_secs() as libc::time_t,
         #[cfg(not(any(target_os = "openbsd", target_os = "netbsd")))]
@@ -100,7 +100,7 @@ fn set_timer_value(fd: RawFd, timeout: time::Duration) {
 
 enum State {
     Init(time::Duration),
-    Running(RawFd, Box<TimerState>),
+    Running(ffi::timer_t, Box<TimerState>),
 }
 
 ///Posix Timer
