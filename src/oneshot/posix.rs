@@ -13,14 +13,8 @@ use crate::alloc::boxed::Box;
 mod ffi {
     use super::*;
 
-    #[derive(Clone, Copy)]
-    #[repr(C)]
-    pub struct timer_t(*mut libc::c_void);
-
-    unsafe impl Send for timer_t {
-    }
-    unsafe impl Sync for timer_t {
-    }
+    #[allow(non_camel_case_types)]
+    pub type timer_t = usize;
 
     #[inline(always)]
     unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
