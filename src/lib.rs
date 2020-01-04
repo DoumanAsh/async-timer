@@ -17,7 +17,7 @@
 #![no_std]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::style))]
 
-#[allow(unused)]
+#[allow(unused_imports)]
 extern crate alloc;
 #[cfg(not(feature = "no_std"))]
 extern crate std;

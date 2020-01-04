@@ -30,7 +30,7 @@ optional = true
 default-features = true
 
 [target.'cfg(any(target_os = "macos", target_os = "ios", unix))'.dependencies]
-libc = "0.2.60"
+libc = { version = "0.2.60", default-features = false }
 mio = { version = "0.6", optional = true }
 tokio = { version = "0.2", default-features = false, optional = true, features = ["io-driver"] }
 
