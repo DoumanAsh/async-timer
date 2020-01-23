@@ -107,7 +107,7 @@ fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
 ///Linux `timerfd` wrapper
 pub struct TimerFd {
     reg: tokio::io::Registration,
-    timer: tokio::io::PollEvented<RawTimer>,
+    timer: RawTimer,
     state: State,
 }
 
@@ -163,7 +163,7 @@ impl Future for TimerFd {
         loop {
             self.state = match &self.state {
                 State::Init(ref timeout) => {
-                    set_timer_value(self.fd.get_ref(), *timeout);
+                    set_timer_value(&self.timer, *timeout);
                     State::Running(false)
                 }
                 State::Running(false) => match Pin::new(&mut self.reg).poll_read_ready(ctx) {
@@ -172,7 +172,7 @@ impl Future for TimerFd {
                         .map(|ready| ready.is_readable())
                         .expect("timerfd cannot be ready")
                     {
-                        true => match self.fd.get_mut().read() {
+                        true => match self.timer.read() {
                             0 => return task::Poll::Pending,
                             _ => return task::Poll::Ready(()),
                         },
