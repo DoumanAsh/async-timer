@@ -85,9 +85,15 @@ enum State {
 }
 
 fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
+    #[cfg(not(target_pointer_width = "64"))]
+    use core::convert::TryFrom;
+
     let it_value = libc::timespec {
         tv_sec: timeout.as_secs() as libc::time_t,
+        #[cfg(target_pointer_width = "64")]
         tv_nsec: libc::suseconds_t::from(timeout.subsec_nanos()),
+        #[cfg(not(target_pointer_width = "64"))]
+        tv_nsec: libc::suseconds_t::try_from(timeout.subsec_nanos()).unwrap_or(libc::suseconds_t::max_value()),
     };
 
     let new_value = sys::itimerspec {
