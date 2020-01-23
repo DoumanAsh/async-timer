@@ -106,7 +106,8 @@ fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
 
 ///Linux `timerfd` wrapper
 pub struct TimerFd {
-    fd: tokio::io::PollEvented<RawTimer>,
+    reg: tokio::io::Registration,
+    timer: tokio::io::PollEvented<RawTimer>,
     state: State,
 }
 
@@ -114,8 +115,10 @@ impl super::Oneshot for TimerFd {
     fn new(timeout: time::Duration) -> Self {
         debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
 
+        let timer = RawTimer::new();
         Self {
-            fd: tokio::io::PollEvented::new(RawTimer::new()).expect("To create PollEvented"),
+            reg: tokio::io::Registration::new(&timer).expect("To create Registration"),
+            timer,
             state: State::Init(timeout),
         }
     }
@@ -135,7 +138,7 @@ impl super::Oneshot for TimerFd {
     }
 
     fn cancel(&mut self) {
-        self.fd.get_mut().set(unsafe { mem::zeroed() });
+        self.timer.set(unsafe { mem::zeroed() });
     }
 
     fn restart(&mut self, new_value: time::Duration, _: &task::Waker) {
@@ -147,7 +150,7 @@ impl super::Oneshot for TimerFd {
             }
             State::Running(ref mut is_finished) => {
                 *is_finished = false;
-                set_timer_value(&self.fd.get_ref(), new_value);
+                set_timer_value(&self.timer, new_value);
             }
         }
     }
@@ -163,21 +166,19 @@ impl Future for TimerFd {
                     set_timer_value(self.fd.get_ref(), *timeout);
                     State::Running(false)
                 }
-                State::Running(false) => {
-                    match Pin::new(&mut self.fd).poll_read_ready(ctx, mio::Ready::readable()) {
-                        task::Poll::Pending => return task::Poll::Pending,
-                        task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("timerfd cannot be ready") {
-                            true => {
-                                let _ = Pin::new(&mut self.fd).clear_read_ready(ctx, mio::Ready::readable());
-                                match self.fd.get_mut().read() {
-                                    0 => return task::Poll::Pending,
-                                    _ => return task::Poll::Ready(()),
-                                }
-                            }
-                            false => return task::Poll::Pending,
+                State::Running(false) => match Pin::new(&mut self.reg).poll_read_ready(ctx) {
+                    task::Poll::Pending => return task::Poll::Pending,
+                    task::Poll::Ready(ready) => match ready
+                        .map(|ready| ready.is_readable())
+                        .expect("timerfd cannot be ready")
+                    {
+                        true => match self.fd.get_mut().read() {
+                            0 => return task::Poll::Pending,
+                            _ => return task::Poll::Ready(()),
                         },
-                    }
-                }
+                        false => return task::Poll::Pending,
+                    },
+                },
                 State::Running(true) => return task::Poll::Ready(()),
             }
         }
