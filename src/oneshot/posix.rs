@@ -69,6 +69,10 @@ fn time_create(state: *mut TimerState) -> ffi::timer_t {
         sival_ptr: state as *mut _,
     };
     event.sigev_signo = TIMER_SIG;
+    //NOTE: Timer handler is invoked by signal handler
+    //      Therefore all limitations are applied to your waker.
+    //      To be safe we could use thread, but in this case
+    //      we cannot really hope for it to be optimal...
     event.sigev_notify = libc::SIGEV_SIGNAL;
 
     let mut res = mem::MaybeUninit::<ffi::timer_t>::uninit();
