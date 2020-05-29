@@ -160,6 +160,12 @@ impl TimerState {
     }
 
     #[inline]
+    ///Resets state, allowing to wake once again.
+    pub fn reset(&self) {
+        self.woken.store(false, Ordering::Release);
+    }
+
+    #[inline]
     ///Registers `Waker` with state
     pub fn register(&self, waker: &task::Waker) {
         self.inner.register(waker);

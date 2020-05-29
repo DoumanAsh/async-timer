@@ -138,7 +138,7 @@ impl super::Oneshot for TimerFd {
         self.fd.get_mut().set(unsafe { mem::zeroed() });
     }
 
-    fn restart(&mut self, new_value: time::Duration, _: &task::Waker) {
+    fn restart(&mut self, new_value: time::Duration) {
         debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         match &mut self.state {
@@ -150,6 +150,10 @@ impl super::Oneshot for TimerFd {
                 set_timer_value(&self.fd.get_ref(), new_value);
             }
         }
+    }
+
+    fn restart_waker(&mut self, new_value: time::Duration, _: &task::Waker) {
+        self.restart(new_value);
     }
 }
 

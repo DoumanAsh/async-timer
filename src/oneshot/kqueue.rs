@@ -122,7 +122,7 @@ impl super::Oneshot for KqueueTimer {
         self.fd.get_mut().unset();
     }
 
-    fn restart(&mut self, new_value: time::Duration, _: &task::Waker) {
+    fn restart(&mut self, new_value: time::Duration) {
         debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         match &mut self.state {
@@ -134,6 +134,11 @@ impl super::Oneshot for KqueueTimer {
                 self.fd.get_ref().set(new_value);
             },
         }
+    }
+
+    #[inline(always)]
+    fn restart_waker(&mut self, new_value: time::Duration, _: &task::Waker) {
+        self.restart(new_value);
     }
 }
 

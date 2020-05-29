@@ -59,9 +59,12 @@ pub trait Oneshot: Send + Sync + Unpin + Future<Output=()> {
     fn cancel(&mut self);
 
     ///Restarts timer with new timeout value.
+    fn restart(&mut self, timeout: time::Duration);
+
+    ///Restarts timer with new timeout value.
     ///
     ///If timer is already running, then over-write old value and replaces waker.
-    fn restart(&mut self, timeout: time::Duration, waker: &task::Waker);
+    fn restart_waker(&mut self, timeout: time::Duration, waker: &task::Waker);
 }
 
 #[cfg(target_arch = "wasm32")]

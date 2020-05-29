@@ -62,7 +62,7 @@ impl<T: Oneshot> Interval<T> {
     ///Restarts interval
     pub fn restart(&mut self, ctx: &task::Context) {
         let interval = self.interval;
-        self.timer.restart(interval, ctx.waker());
+        self.timer.restart_waker(interval, ctx.waker());
     }
 
 

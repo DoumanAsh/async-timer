@@ -152,7 +152,21 @@ impl super::Oneshot for PosixTimer {
         }
     }
 
-    fn restart(&mut self, new_value: time::Duration, waker: &task::Waker) {
+    fn restart(&mut self, new_value: time::Duration) {
+        debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
+
+        match &mut self.state {
+            State::Init(ref mut timeout) => {
+                *timeout = new_value;
+            },
+            State::Running(fd, ref mut state) => {
+                state.reset();
+                set_timer_value(*fd, new_value);
+            }
+        }
+    }
+
+    fn restart_waker(&mut self, new_value: time::Duration, waker: &task::Waker) {
         debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
 
         match &mut self.state {

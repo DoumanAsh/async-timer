@@ -21,7 +21,10 @@ impl super::Oneshot for NeverTimer {
     fn cancel(&mut self) {
     }
 
-    fn restart(&mut self, _: time::Duration, _: &task::Waker) {
+    fn restart(&mut self, _: time::Duration) {
+    }
+
+    fn restart_waker(&mut self, _: time::Duration, _: &task::Waker) {
     }
 }
 

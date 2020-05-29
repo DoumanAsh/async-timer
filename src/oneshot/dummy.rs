@@ -24,7 +24,11 @@ impl super::Oneshot for DummyTimer {
         unimplemented!();
     }
 
-    fn restart(&mut self, _: time::Duration, _: &task::Waker) {
+    fn restart(&mut self, _: time::Duration) {
+        unimplemented!();
+    }
+
+    fn restart_waker(&mut self, _: time::Duration, _: &task::Waker) {
         unimplemented!();
     }
 }

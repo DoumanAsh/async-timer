@@ -133,7 +133,7 @@ impl<F: Future, T: Oneshot> Future for Expired<F, T> {
 
         match state {
             Timed::Ongoing(mut timer, future, timeout) => {
-                timer.restart(timeout, ctx.waker());
+                timer.restart_waker(timeout, ctx.waker());
 
                 task::Poll::Ready(Timed::Ongoing(timer, future, timeout))
             },
