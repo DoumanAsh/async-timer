@@ -7,7 +7,7 @@ use core::future::Future;
 use core::pin::Pin;
 use core::{mem, ptr, time, task};
 
-use super::state::TimerState;
+use crate::state::TimerState;
 use crate::alloc::boxed::Box;
 
 mod ffi {

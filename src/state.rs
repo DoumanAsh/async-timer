@@ -1,14 +1,27 @@
 //!State module
 
+use core::task;
 use core::cell::UnsafeCell;
-use core::sync::atomic::{AtomicU8};
-use core::sync::atomic::Ordering::{Acquire, Release, AcqRel};
-use core::task::{self, Waker};
+use core::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
-// Based on futures-rs
-struct AtomicWaker {
-    state: AtomicU8,
-    waker: UnsafeCell<Option<Waker>>,
+mod noop {
+    use core::{ptr, task};
+
+    static VTABLE: task::RawWakerVTable = task::RawWakerVTable::new(clone, action, action, action);
+
+    fn clone(_: *const()) -> task::RawWaker {
+        task::RawWaker::new(ptr::null(), &VTABLE)
+    }
+
+    fn action(_: *const ()) {
+    }
+
+    #[inline(always)]
+    pub fn waker() -> task::Waker {
+        unsafe {
+            task::Waker::from_raw(task::RawWaker::new(ptr::null(), &VTABLE))
+        }
+    }
 }
 
 /// Idle state
@@ -20,20 +33,26 @@ const REGISTERING: u8 = 0b01;
 /// The waker currently registered with the `AtomicWaker` cell is being woken.
 const WAKING: u8 = 0b10;
 
+// Based on futures-rs
+struct AtomicWaker {
+    state: AtomicU8,
+    waker: UnsafeCell<task::Waker>,
+}
+
 impl AtomicWaker {
-    const fn new() -> Self {
+    fn new() -> Self {
         Self {
             state: AtomicU8::new(WAITING),
-            waker: UnsafeCell::new(None),
+            waker: UnsafeCell::new(noop::waker()),
         }
     }
 
-    fn register(&self, waker: &Waker) {
-        match self.state.compare_and_swap(WAITING, REGISTERING, Acquire) {
+    fn register(&self, waker: &task::Waker) {
+        match self.state.compare_and_swap(WAITING, REGISTERING, Ordering::Acquire) {
             WAITING => {
                 unsafe {
                     // Locked acquired, update the waker cell
-                    *self.waker.get() = Some(waker.clone());
+                    *self.waker.get() = waker.clone();
 
                     // Release the lock. If the state transitioned to include
                     // the `WAKING` bit, this means that a wake has been
@@ -42,7 +61,7 @@ impl AtomicWaker {
                     //
                     // Start by assuming that the state is `REGISTERING` as this
                     // is what we jut set it to.
-                    let res = self.state.compare_exchange(REGISTERING, WAITING, AcqRel, Acquire);
+                    let res = self.state.compare_exchange(REGISTERING, WAITING, Ordering::AcqRel, Ordering::Acquire);
 
                     match res {
                         Ok(_) => {}
@@ -53,16 +72,11 @@ impl AtomicWaker {
                             // `WAKING`.
                             debug_assert_eq!(actual, REGISTERING | WAKING);
 
-                            // Take the waker to wake once the atomic operation has
-                            // completed.
-                            let waker = (*self.waker.get()).take().unwrap();
+                            // Wake without dropping.
+                            (*self.waker.get()).wake_by_ref();
 
                             // Just swap, because no one could change state while state == `REGISTERING` | `WAKING`.
-                            self.state.swap(WAITING, AcqRel);
-
-                            // The atomic swap was complete, now
-                            // wake the task and return.
-                            waker.wake();
+                            self.state.swap(WAITING, Ordering::AcqRel);
                         }
                     }
                 }
@@ -88,33 +102,17 @@ impl AtomicWaker {
         }
     }
 
-    fn is_registered(&self) -> bool {
-        match self.state.load(Acquire) {
-            WAITING => unsafe { (*self.waker.get()).is_some() },
-            //If we're WAKING then early false
-            state => (state & WAKING) == 0,
-        }
-    }
-
     fn wake(&self) {
-        if let Some(waker) = self.take() {
-            waker.wake();
-        }
-    }
-
-    fn take(&self) -> Option<Waker> {
         // AcqRel ordering is used in order to acquire the value of the `task`
         // cell as well as to establish a `release` ordering with whatever
         // memory the `AtomicWaker` is associated with.
-        match self.state.fetch_or(WAKING, AcqRel) {
+        match self.state.fetch_or(WAKING, Ordering::AcqRel) {
             WAITING => {
                 // The waking lock has been acquired.
-                let waker = unsafe { (*self.waker.get()).take() };
+                unsafe { (*self.waker.get()).wake_by_ref() };
 
                 // Release the lock
-                self.state.fetch_and(!WAKING, Release);
-
-                waker
+                self.state.fetch_and(!WAKING, Ordering::Release);
             }
             state => {
                 // There is a concurrent thread currently updating the
@@ -128,7 +126,6 @@ impl AtomicWaker {
                     state == REGISTERING ||
                     state == REGISTERING | WAKING ||
                     state == WAKING);
-                None
             }
         }
     }
@@ -139,14 +136,15 @@ unsafe impl Sync for AtomicWaker {}
 
 ///Timer's state
 pub struct TimerState {
-    ///Underlying waker
+    woken: AtomicBool,
     inner: AtomicWaker,
 }
 
 impl TimerState {
     ///Initializes state.
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
+            woken: AtomicBool::new(false),
             inner: AtomicWaker::new(),
         }
     }
@@ -158,13 +156,14 @@ impl TimerState {
     ///with `TimerState` or not. It is not intended for user
     ///to call `is_done` before  `register`
     pub fn is_done(&self) -> bool {
-        !self.inner.is_registered()
+        self.woken.load(Ordering::Acquire)
     }
 
     #[inline]
     ///Registers `Waker` with state
     pub fn register(&self, waker: &task::Waker) {
-        self.inner.register(waker)
+        self.inner.register(waker);
+        self.woken.store(false, Ordering::Release);
     }
 
     #[inline]
@@ -172,6 +171,8 @@ impl TimerState {
     ///
     ///After that `Waker` is no longer registered with `TimerState`
     pub fn wake(&self) {
-        self.inner.wake();
+        if !self.woken.compare_and_swap(false, true, Ordering::SeqCst) {
+            self.inner.wake();
+        }
     }
 }

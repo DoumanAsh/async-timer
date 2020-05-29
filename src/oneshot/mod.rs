@@ -64,8 +64,6 @@ pub trait Oneshot: Send + Sync + Unpin + Future<Output=()> {
     fn restart(&mut self, timeout: time::Duration, waker: &task::Waker);
 }
 
-mod state;
-
 #[cfg(target_arch = "wasm32")]
 pub mod web;
 #[cfg(windows)]

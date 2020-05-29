@@ -4,7 +4,7 @@ use core::{ptr, task, time};
 use core::pin::Pin;
 use core::future::Future;
 
-use super::state::TimerState;
+use crate::state::TimerState;
 use crate::alloc::boxed::Box;
 
 use libc::{c_long, c_ulong, c_void, uintptr_t};

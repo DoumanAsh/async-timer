@@ -30,6 +30,7 @@ pub mod oneshot;
 mod timed;
 mod interval;
 
+pub mod state;
 pub use oneshot::Oneshot;
 pub use timed::{Timed, Expired};
 pub use interval::Interval;

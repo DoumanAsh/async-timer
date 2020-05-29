@@ -1,6 +1,6 @@
 //! Windows API based timer
 
-use super::state::TimerState;
+use crate::state::TimerState;
 use crate::alloc::boxed::Box;
 
 use core::{mem, task, time, ptr};

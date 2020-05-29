@@ -4,7 +4,7 @@ use core::{task, time};
 use core::pin::Pin;
 use core::future::Future;
 
-use super::state::TimerState;
+use crate::state::TimerState;
 use crate::alloc::boxed::Box;
 
 #[wasm_bindgen::prelude::wasm_bindgen]
