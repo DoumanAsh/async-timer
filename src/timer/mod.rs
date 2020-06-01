@@ -119,3 +119,18 @@ pub type Platform = dummy::DummyTimer;
 pub const fn new_timer(timeout: time::Duration) -> Platform {
     Platform::new(timeout)
 }
+
+#[inline]
+///Sets globally resolution, used by timers.
+///
+///Does nothing if platform provides no way to control resolution.
+///
+///Following is set:
+///
+///- `Windows` allows to set resolution within range `[0..u32::max_value()]`
+pub fn set_resolution(_resolution: time::Duration) {
+    #[cfg(windows)]
+    {
+        win::RESOLUTION.store(_resolution.as_millis() as u32, core::sync::atomic::Ordering::Relaxed)
+    }
+}

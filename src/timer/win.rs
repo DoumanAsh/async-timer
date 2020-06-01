@@ -3,11 +3,14 @@
 use core::{task, time};
 use core::pin::Pin;
 use core::future::Future;
+use core::sync::atomic::{AtomicU32, Ordering};
 
 use crate::state::{TimerState};
 use crate::alloc::boxed::Box;
 
-const RESOLUTION: u32 = 10; //ms
+//We can probably achieve even more with `NtSetTimerResolution` but it is still at most 0.5ms so
+//who cares
+pub(crate) const RESOLUTION: AtomicU32 = AtomicU32::new(10); //ms
 
 type Callback = Option<unsafe extern "system" fn(_: u32, _:u32, data: usize, _: usize, _: usize)>;
 
@@ -26,7 +29,7 @@ unsafe extern "system" fn timer_callback(_: u32, _: u32, data: usize, _: usize, 
 
 fn create_timer(state: *mut TimerState, timeout: time::Duration) -> u32 {
     let res = unsafe {
-        timeSetEvent(timeout.as_millis() as u32, RESOLUTION, Some(timer_callback), state as usize, 0)
+        timeSetEvent(timeout.as_millis() as u32, RESOLUTION.load(Ordering::Relaxed), Some(timer_callback), state as usize, 0)
     };
 
     os_assert!(res != 0);
@@ -61,6 +64,7 @@ impl super::Timer for WinTimer {
     #[inline(always)]
     fn new(timeout: time::Duration) -> Self {
         assert_time!(timeout);
+        debug_assert!(timeout.as_millis() <= u32::max_value().into());
         Self::new(timeout)
     }
 
@@ -81,7 +85,8 @@ impl super::Timer for WinTimer {
     }
 
     fn restart(&mut self, new_value: time::Duration) {
-        debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
+        assert_time!(new_value);
+        debug_assert!(new_value.as_millis() <= u32::max_value().into());
 
         match &mut self.state {
             State::Init(ref mut timeout) => {

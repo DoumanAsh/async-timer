@@ -170,7 +170,7 @@ impl super::Timer for AppleTimer {
     }
 
     fn restart(&mut self, new_value: time::Duration) {
-        debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
+        assert_time!(new_value);
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
