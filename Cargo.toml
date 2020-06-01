@@ -48,10 +48,6 @@ nix = { version = "0.17", optional = true }
 [target.'cfg(any(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen = "0.2"
 
-[target.'cfg(windows)'.dependencies.winapi]
-version = "0.3"
-features = ["threadpoolapiset"]
-
 [dev-dependencies]
 futures-util = "0.3.0"
 tokio = { version = "0.2", features = ["macros", "rt-core"] }
