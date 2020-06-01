@@ -1,19 +1,37 @@
 //!State module
 
-use core::task;
+use core::{task};
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+
+#[cold]
+fn should_not_clone(_: *const()) -> task::RawWaker {
+    panic!("Impossible Waker Clone");
+}
+
+mod plain_fn {
+    use core::{task, mem};
+
+    static VTABLE: task::RawWakerVTable = task::RawWakerVTable::new(super::should_not_clone, action, action, super::noop::action);
+
+    unsafe fn action(callback: *const ()) {
+        let func: fn() = mem::transmute(callback);
+        func()
+    }
+
+    pub fn waker(data: fn()) -> task::Waker {
+        unsafe {
+            task::Waker::from_raw(task::RawWaker::new(data as *const (), &VTABLE))
+        }
+    }
+}
 
 mod noop {
     use core::{ptr, task};
 
-    static VTABLE: task::RawWakerVTable = task::RawWakerVTable::new(clone, action, action, action);
+    static VTABLE: task::RawWakerVTable = task::RawWakerVTable::new(super::should_not_clone, action, action, action);
 
-    fn clone(_: *const()) -> task::RawWaker {
-        task::RawWaker::new(ptr::null(), &VTABLE)
-    }
-
-    fn action(_: *const ()) {
+    pub fn action(_: *const ()) {
     }
 
     #[inline(always)]
@@ -33,8 +51,9 @@ const REGISTERING: u8 = 0b01;
 /// The waker currently registered with the `AtomicWaker` cell is being woken.
 const WAKING: u8 = 0b10;
 
-// Based on futures-rs
-struct AtomicWaker {
+#[doc(hidden)]
+/// Atomic waker used by `TimerState`
+pub struct AtomicWaker {
     state: AtomicU8,
     waker: UnsafeCell<task::Waker>,
 }
@@ -44,6 +63,34 @@ impl AtomicWaker {
         Self {
             state: AtomicU8::new(WAITING),
             waker: UnsafeCell::new(noop::waker()),
+        }
+    }
+
+    ///This is the same function as `register` but working with owned version.
+    fn register_owned(&self, waker: task::Waker) {
+        match self.state.compare_and_swap(WAITING, REGISTERING, Ordering::Acquire) {
+            WAITING => {
+                unsafe {
+                    *self.waker.get() = waker;
+
+                    let res = self.state.compare_exchange(REGISTERING, WAITING, Ordering::AcqRel, Ordering::Acquire);
+
+                    match res {
+                        Ok(_) => {}
+                        Err(actual) => {
+                            debug_assert_eq!(actual, REGISTERING | WAKING);
+
+                            (*self.waker.get()).wake_by_ref();
+
+                            self.state.swap(WAITING, Ordering::AcqRel);
+                        }
+                    }
+                }
+            }
+            WAKING => {
+                waker.wake();
+            }
+            state => debug_assert!(state == REGISTERING || state == REGISTERING | WAKING),
         }
     }
 
@@ -165,20 +212,46 @@ impl TimerState {
         self.woken.store(false, Ordering::Release);
     }
 
-    #[inline]
+    #[inline(always)]
     ///Registers `Waker` with state
     pub fn register(&self, waker: &task::Waker) {
-        self.inner.register(waker);
-        self.woken.store(false, Ordering::Release);
+        self.register_callback(waker);
+    }
+
+    #[inline]
+    ///Registers `Callback` with the state.
+    ///
+    ///This callback is used replaces previous one, if any.
+    pub fn register_callback<C: Callback>(&self, cb: C) {
+        cb.register(&self.inner);
     }
 
     #[inline]
     ///Notifies underlying `Waker`
     ///
     ///After that `Waker` is no longer registered with `TimerState`
-    pub fn wake(&self) {
+    pub(crate) fn wake(&self) {
         if !self.woken.compare_and_swap(false, true, Ordering::SeqCst) {
             self.inner.wake();
         }
+    }
+}
+
+///Interface to timer's callback
+pub trait Callback {
+    #[doc(hidden)]
+    fn register(self, waker: &AtomicWaker);
+}
+
+impl<'a> Callback for &'a task::Waker {
+    #[inline(always)]
+    fn register(self, waker: &AtomicWaker) {
+        waker.register(self)
+    }
+}
+
+impl<'a> Callback for fn() {
+    fn register(self, waker: &AtomicWaker) {
+        waker.register_owned(plain_fn::waker(self));
     }
 }

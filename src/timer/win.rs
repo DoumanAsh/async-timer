@@ -1,11 +1,11 @@
 //! Windows API based timer
 
-use crate::state::TimerState;
-use crate::alloc::boxed::Box;
-
-use core::{mem, task, time, ptr};
+use core::{task, time, ptr, mem};
 use core::pin::Pin;
 use core::future::Future;
+
+use crate::state::{TimerState};
+use crate::alloc::boxed::Box;
 
 mod ffi {
     pub use winapi::shared::minwindef::{FILETIME};
@@ -52,20 +52,32 @@ enum State {
     Running(ffi::PTP_TIMER, Box<TimerState>),
 }
 
+unsafe impl Send for State {}
+unsafe impl Sync for State {}
+
 ///Windows Native timer
 pub struct WinTimer {
     state: State,
 }
 
-impl super::Oneshot for WinTimer {
-    fn new(timeout: time::Duration) -> Self {
-        debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
-
+impl WinTimer {
+    #[inline]
+    ///Creates new instance
+    pub const fn new(time: time::Duration) -> Self {
         Self {
-            state: State::Init(timeout),
+            state: State::Init(time),
         }
     }
+}
 
+impl super::Timer for WinTimer {
+    #[inline(always)]
+    fn new(timeout: time::Duration) -> Self {
+        assert_time!(timeout);
+        Self::new(timeout)
+    }
+
+    #[inline]
     fn is_ticking(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
@@ -73,20 +85,11 @@ impl super::Oneshot for WinTimer {
         }
     }
 
+    #[inline]
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
             State::Running(_, ref state) => state.is_done(),
-        }
-    }
-
-    fn cancel(&mut self) {
-        match self.state {
-            State::Init(_) => (),
-            State::Running(fd, _) => unsafe {
-                ffi::SetThreadpoolTimerEx(fd, ptr::null_mut(), 0, 0);
-                ffi::WaitForThreadpoolTimerCallbacks(fd, 1);
-            }
         }
     }
 
@@ -104,17 +107,34 @@ impl super::Oneshot for WinTimer {
         }
     }
 
-    fn restart_waker(&mut self, new_value: time::Duration, waker: &task::Waker) {
-        debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
-
-        match &mut self.state {
-            State::Init(ref mut timeout) => {
-                *timeout = new_value;
-            },
-            State::Running(fd, ref mut state) => {
-                state.register(waker);
-                set_timer_value(*fd, new_value);
+    fn cancel(&mut self) {
+        match self.state {
+            State::Init(_) => (),
+            State::Running(fd, _) => unsafe {
+                ffi::SetThreadpoolTimerEx(fd, ptr::null_mut(), 0, 0);
+                ffi::WaitForThreadpoolTimerCallbacks(fd, 1);
             }
+        }
+    }
+}
+
+impl super::SyncTimer for WinTimer {
+    fn init<R, F: Fn(&TimerState) -> R>(&mut self, init: F) -> R {
+        if let State::Init(timeout) = self.state {
+            let state = Box::into_raw(Box::new(TimerState::new()));
+            let fd = time_create(state);
+
+            let state = unsafe { Box::from_raw(state) };
+            init(&state);
+
+            set_timer_value(fd, timeout);
+
+            self.state = State::Running(fd, state)
+        }
+
+        match &self.state {
+            State::Running(_, ref state) => init(state),
+            State::Init(_) => unreach!(),
         }
     }
 }
@@ -122,26 +142,9 @@ impl super::Oneshot for WinTimer {
 impl Future for WinTimer {
     type Output = ();
 
-    fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        self.state = match &self.state {
-            State::Init(ref timeout) => {
-                let state = Box::into_raw(Box::new(TimerState::new()));
-                let fd = time_create(state);
-
-                let state = unsafe { Box::from_raw(state) };
-                state.register(ctx.waker());
-
-                set_timer_value(fd, *timeout);
-
-                State::Running(fd, state)
-            },
-            State::Running(_, ref state) => match state.is_done() {
-                false => return task::Poll::Pending,
-                true => return task::Poll::Ready(()),
-            }
-        };
-
-        task::Poll::Pending
+    #[inline]
+    fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
+        crate::timer::poll_sync(self.get_mut(), ctx)
     }
 }
 
@@ -157,6 +160,3 @@ impl Drop for WinTimer {
         }
     }
 }
-
-unsafe impl Send for WinTimer {}
-unsafe impl Sync for WinTimer {}
