@@ -125,8 +125,11 @@ enum State {
 
 ///Posix Timer
 ///
-///Currently implemented only for `Linux` and `Android` as BSD systems
-///proved to be a bit  problematic
+///When using `c_wrapper` feature implementation uses C shim to create timers which call callbacks
+///from a separate thread.
+///
+///Without it, callback is called from signal handler which limits usable operations within the
+///callback.
 pub struct PosixTimer {
     state: State,
 }

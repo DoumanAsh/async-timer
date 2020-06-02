@@ -52,4 +52,5 @@ jobs:
       run: cargo test --all --features std,stream
 
     - name: Test with C wrapper
+      if: runner.os == 'Linux'
       run: cargo test --all --features c_wrapper
