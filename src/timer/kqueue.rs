@@ -1,8 +1,3 @@
-//! Timer based on `kqueue`
-
-#[cfg(feature = "no_std")]
-core::compile_error!("no_std is not supported for kqueue implementation");
-
 use core::{task, time};
 use core::pin::Pin;
 use core::future::Future;
@@ -85,54 +80,67 @@ impl Drop for RawTimer {
 
 enum State {
     Init(time::Duration),
-    Running(bool),
+    Running(tokio::io::PollEvented<RawTimer>, bool),
 }
 
 ///Timer based on `kqueue`
 pub struct KqueueTimer {
-    fd: tokio::io::PollEvented<RawTimer>,
     state: State,
 }
 
-impl super::Oneshot for KqueueTimer {
-    fn new(timeout: time::Duration) -> Self {
-        debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
-
+impl KqueueTimer {
+    #[inline]
+    ///Creates new instance
+    pub const fn new(time: time::Duration) -> Self {
         Self {
-            fd: tokio::io::PollEvented::new(RawTimer::new()).expect("To create PollEvented"),
-            state: State::Init(timeout),
+            state: State::Init(time),
         }
     }
+}
 
+impl super::Timer for KqueueTimer {
+    #[inline(always)]
+    fn new(timeout: time::Duration) -> Self {
+        assert_time!(timeout);
+        debug_assert!(timeout.as_millis() <= u32::max_value().into());
+        Self::new(timeout)
+    }
+
+    #[inline]
     fn is_ticking(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(is_finished) => !*is_finished,
+            State::Running(_, state) => !*state,
         }
     }
 
+    #[inline]
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(is_finished) => *is_finished,
+            State::Running(_, state) => *state
         }
     }
 
-    fn cancel(&mut self) {
-        self.fd.get_mut().unset();
-    }
-
-    fn restart(&mut self, new_value: time::Duration, _: &task::Waker) {
-        debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
+    fn restart(&mut self, new_value: time::Duration) {
+        assert_time!(new_value);
+        debug_assert!(new_value.as_millis() <= u32::max_value().into());
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
                 *timeout = new_value;
             },
-            State::Running(ref mut is_finished) => {
-                *is_finished = false;
-                self.fd.get_ref().set(new_value);
-            },
+            State::Running(ref fd, ref mut state) => {
+                *state = false;
+                fd.get_ref().set(new_value);
+            }
+        }
+    }
+
+    fn cancel(&mut self) {
+        match self.state {
+            State::Init(_) => (),
+            State::Running(ref mut fd, _) => fd.get_mut().unset(),
         }
     }
 }
@@ -142,25 +150,29 @@ impl Future for KqueueTimer {
 
     fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
         loop {
-            self.state = match &self.state {
+            self.state = match &mut self.state {
                 State::Init(ref timeout) => {
-                    self.fd.get_ref().set(*timeout);
-                    State::Running(false)
-                },
-                State::Running(false) => match Pin::new(&mut self.fd).poll_read_ready(ctx, mio::Ready::readable()) {
-                    task::Poll::Pending => return task::Poll::Pending,
-                    task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("kqueue cannot be ready") {
-                        true => {
-                            let _ = Pin::new(&mut self.fd).clear_read_ready(ctx, mio::Ready::readable());
-                            match self.fd.get_mut().read() {
-                                0 => return task::Poll::Pending,
-                                _ => return task::Poll::Ready(()),
+                    let fd = tokio::io::PollEvented::new(RawTimer::new()).expect("To create PollEvented");
+                    fd.get_ref().set(*timeout);
+                    State::Running(fd, false)
+                }
+                State::Running(ref mut fd, false) => {
+                    let fd = Pin::new(fd);
+                    match fd.poll_read_ready(ctx, mio::Ready::readable()) {
+                        task::Poll::Pending => return task::Poll::Pending,
+                        task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("kqueue cannot be ready") {
+                            true => {
+                                let _ = fd.clear_read_ready(ctx, mio::Ready::readable());
+                                match fd.get_mut().get_mut().read() {
+                                    0 => return task::Poll::Pending,
+                                    _ => return task::Poll::Ready(()),
+                                }
                             }
+                            false => return task::Poll::Pending,
                         },
-                        false => return task::Poll::Pending,
                     }
-                },
-                State::Running(true) => return task::Poll::Ready(()),
+                }
+                State::Running(_, true) => return task::Poll::Ready(()),
             }
         }
     }

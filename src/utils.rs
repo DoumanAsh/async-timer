@@ -18,21 +18,23 @@ macro_rules! unreach {
     })
 }
 
+#[allow(unused_macros)]
 ///Assertion macro, which panics with last OS error
-///
-///With `no_std` equal to `assert!`
-#[cfg(not(feature = "no_std"))]
 macro_rules! os_assert {
     ($cond:expr) => ({
         if !($cond) {
-            panic!("Assertion '{}' failed. OS error: {:?}", stringify!($cond), std::io::Error::last_os_error());
+            panic!("Assertion '{}' failed. {}", stringify!($cond), error_code::SystemError::last());
         }
     })
 }
 
-#[cfg(feature = "no_std")]
-macro_rules! os_assert {
-    ($cond:expr) => ({
-        assert!($cond);
+#[allow(unused)]
+pub(crate) const ZERO_TIME_FAIL: &str = "Zero timeout makes no sense";
+
+#[allow(unused_macros)]
+#[doc(hidden)]
+macro_rules! assert_time {
+    ($time:expr) => ({
+        debug_assert!(!($time.as_secs() == 0 && $time.subsec_nanos() == 0), $crate::utils::ZERO_TIME_FAIL);
     })
 }

@@ -4,8 +4,8 @@ use core::future::Future;
 use core::{task, time};
 use core::pin::Pin;
 
-use crate::oneshot::Oneshot;
-use crate::oneshot::Timer as PlatformTimer;
+use crate::timer::Timer;
+use crate::timer::Platform as PlatformTimer;
 
 ///Periodic Timer
 ///
@@ -44,7 +44,7 @@ impl Interval {
     }
 }
 
-impl<T: Oneshot> Interval<T> {
+impl<T: Timer> Interval<T> {
     ///Creates new instance with specified timer type.
     pub fn new(interval: time::Duration) -> Self {
         Self {
@@ -60,11 +60,10 @@ impl<T: Oneshot> Interval<T> {
     }
 
     ///Restarts interval
-    pub fn restart(&mut self, ctx: &task::Context) {
+    pub fn restart(&mut self) {
         let interval = self.interval;
-        self.timer.restart(interval, ctx.waker());
+        self.timer.restart(interval);
     }
-
 
     #[inline(always)]
     ///Gets mutable reference
@@ -73,13 +72,13 @@ impl<T: Oneshot> Interval<T> {
     }
 }
 
-impl<T: Oneshot> Future for &'_ mut Interval<T> {
+impl<T: Timer> Future for &'_ mut Interval<T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
         match Future::poll(Pin::new(&mut self.timer), ctx) {
             task::Poll::Ready(()) => {
-                self.restart(ctx);
+                self.restart();
                 task::Poll::Ready(())
             },
             task::Poll::Pending => task::Poll::Pending,
@@ -88,7 +87,7 @@ impl<T: Oneshot> Future for &'_ mut Interval<T> {
 }
 
 #[cfg(feature = "stream")]
-impl<T: Oneshot> futures_core::stream::Stream for Interval<T> {
+impl<T: Timer> futures_core::stream::Stream for Interval<T> {
     type Item = ();
 
     #[inline]

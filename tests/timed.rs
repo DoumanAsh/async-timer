@@ -1,11 +1,11 @@
 use async_timer::{Timed};
-use async_timer::oneshot::{Oneshot, Timer};
+use async_timer::timer::{new_timer};
 
 use std::time;
 
 #[tokio::test]
 async fn test_timed() {
-    let future = Timer::new(time::Duration::from_secs(4));
+    let future = new_timer(time::Duration::from_secs(4));
     let work = Timed::platform_new(future, time::Duration::from_secs(3));
 
     let before = time::SystemTime::now();

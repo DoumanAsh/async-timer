@@ -17,17 +17,26 @@ include = [
 
 [features]
 default = []
-# Requires alloc
-no_std = []
-# Enables usage of tokio
-tokio_on = ["mio", "tokio", "nix"]
+# Enables std usage for traits
+std = []
+# Enables C API wrapper for platform code.
+c_wrapper = ["cc"]
+# Enables usage of tokio 0.2
+tokio02 = ["mio", "tokio", "nix", "std"]
 # Enables Stream implementation
 stream = ["futures-core"]
+
+[dependencies]
+error-code = "1"
 
 [dependencies.futures-core]
 version = "0.3"
 optional = true
 default-features = true
+
+# posix only
+[target.'cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))'.dependencies]
+os-sync = "0.3"
 
 [target.'cfg(any(target_os = "macos", target_os = "ios", unix))'.dependencies]
 libc = { version = "0.2.60", default-features = false }
@@ -41,10 +50,10 @@ nix = { version = "0.17", optional = true }
 [target.'cfg(any(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen = "0.2"
 
-[target.'cfg(windows)'.dependencies.winapi]
-version = "0.3"
-features = ["threadpoolapiset"]
-
 [dev-dependencies]
 futures-util = "0.3.0"
 tokio = { version = "0.2", features = ["macros", "rt-core"] }
+
+[build-dependencies.cc]
+version = "1"
+optional = true

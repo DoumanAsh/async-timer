@@ -4,10 +4,17 @@ use core::{task, time};
 use core::future::Future;
 use core::pin::Pin;
 
-///Dummy Timer
+///Dummy Timer with implementation that panics
 pub struct DummyTimer;
 
-impl super::Oneshot for DummyTimer {
+impl DummyTimer {
+    ///Creates new instance
+    pub const fn new(_: time::Duration) -> Self {
+        Self
+    }
+}
+
+impl super::Timer for DummyTimer {
     fn new(_: time::Duration) -> Self {
         unimplemented!();
     }
@@ -24,7 +31,13 @@ impl super::Oneshot for DummyTimer {
         unimplemented!();
     }
 
-    fn restart(&mut self, _: time::Duration, _: &task::Waker) {
+    fn restart(&mut self, _: time::Duration) {
+        unimplemented!();
+    }
+}
+
+impl super::SyncTimer for DummyTimer {
+    fn init<R, F: Fn(&crate::state::TimerState) -> R>(&mut self, _: F) -> R {
         unimplemented!();
     }
 }
@@ -36,4 +49,3 @@ impl Future for DummyTimer {
         unimplemented!();
     }
 }
-

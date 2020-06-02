@@ -4,7 +4,7 @@ use core::{ptr, task, time};
 use core::pin::Pin;
 use core::future::Future;
 
-use super::state::TimerState;
+use crate::state::TimerState;
 use crate::alloc::boxed::Box;
 
 use libc::{c_long, c_ulong, c_void, uintptr_t};
@@ -119,26 +119,41 @@ impl TimerHandle {
     }
 }
 
+unsafe impl Send for TimerHandle {}
+unsafe impl Sync for TimerHandle {}
 
 enum State {
     Init(time::Duration),
     Running(TimerHandle, Box<TimerState>),
 }
 
-///Timer based on Apple APIs
+///Posix Timer
+///
+///Currently implemented only for `Linux` and `Android` as BSD systems
+///proved to be a bit  problematic
 pub struct AppleTimer {
     state: State,
 }
 
-impl super::Oneshot for AppleTimer {
-    fn new(timeout: time::Duration) -> Self {
-        debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
-
+impl AppleTimer {
+    #[inline]
+    ///Creates new instance
+    pub const fn new(time: time::Duration) -> Self {
         Self {
-            state: State::Init(timeout),
+            state: State::Init(time),
         }
     }
+}
 
+impl super::Timer for AppleTimer {
+    #[inline(always)]
+    fn new(timeout: time::Duration) -> Self {
+        assert_time!(timeout);
+        Self::new(timeout)
+    }
+
+
+    #[inline]
     fn is_ticking(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
@@ -146,6 +161,7 @@ impl super::Oneshot for AppleTimer {
         }
     }
 
+    #[inline]
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
@@ -153,26 +169,45 @@ impl super::Oneshot for AppleTimer {
         }
     }
 
-    fn cancel(&mut self) {
-        match &mut self.state {
-            State::Init(_) => (),
-            State::Running(ref mut fd, _) => {
-                fd.suspend();
-            }
-        }
-    }
-
-    fn restart(&mut self, new_value: time::Duration, waker: &task::Waker) {
-        debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
+    fn restart(&mut self, new_value: time::Duration) {
+        assert_time!(new_value);
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
                 *timeout = new_value;
             },
-            State::Running(ref mut fd, ref state) => {
-                state.register(waker);
+            State::Running(fd, ref mut state) => {
+                state.reset();
                 fd.set_delay(new_value);
-            },
+            }
+        }
+    }
+
+    fn cancel(&mut self) {
+        match self.state {
+            State::Init(_) => (),
+            State::Running(ref mut fd, _) => fd.suspend(),
+        }
+    }
+}
+
+impl super::SyncTimer for AppleTimer {
+    fn init<R, F: Fn(&TimerState) -> R>(&mut self, init: F) -> R {
+        if let State::Init(timeout) = self.state {
+            let state = Box::into_raw(Box::new(TimerState::new()));
+            let mut fd = TimerHandle::new(state);
+
+            let state = unsafe { Box::from_raw(state) };
+            init(&state);
+
+            fd.set_delay(timeout);
+
+            self.state = State::Running(fd, state)
+        }
+
+        match &self.state {
+            State::Running(_, ref state) => init(state),
+            State::Init(_) => unreach!(),
         }
     }
 }
@@ -180,28 +215,8 @@ impl super::Oneshot for AppleTimer {
 impl Future for AppleTimer {
     type Output = ();
 
-    fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        self.state = match &self.state {
-            State::Init(ref timeout) => {
-                let state = Box::into_raw(Box::new(TimerState::new()));
-                let mut fd = TimerHandle::new(state);
-
-                let state = unsafe { Box::from_raw(state) };
-                state.register(ctx.waker());
-
-                fd.set_delay(*timeout);
-
-                State::Running(fd, state)
-            },
-            State::Running(_, ref state) => match state.is_done() {
-                false => return task::Poll::Pending,
-                true => return task::Poll::Ready(()),
-            }
-        };
-
-        task::Poll::Pending
+    #[inline]
+    fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
+        crate::timer::poll_sync(self.get_mut(), ctx)
     }
 }
-
-unsafe impl Send for AppleTimer {}
-unsafe impl Sync for AppleTimer {}

@@ -39,18 +39,18 @@ jobs:
         cargo --version
         rustc --version
 
-    - name: Check no_std
-      if: runner.os != 'Linux'
-      run: cargo check --all --features no_std
-
     - name: Check WASM
       run: |
         rustup target add wasm32-unknown-unknown
-        cargo check --target wasm32-unknown-unknown --features no_std
+        cargo check --target wasm32-unknown-unknown
 
-    - name: Test with tokio
+    - name: Test with tokio 0.2
       if: runner.os != 'Windows'
-      run: cargo test --features tokio_on
+      run: cargo test --features tokio02
 
     - name: Test
-      run: cargo test --all --features stream
+      run: cargo test --all --features std,stream
+
+    - name: Test with C wrapper
+      if: runner.os == 'Linux'
+      run: cargo test --all --features c_wrapper

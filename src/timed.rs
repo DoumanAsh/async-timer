@@ -4,8 +4,8 @@ use core::future::Future;
 use core::{fmt, task, time, mem};
 use core::pin::Pin;
 
-use crate::oneshot::Oneshot;
-use crate::oneshot::Timer as PlatformTimer;
+use crate::timer::Timer;
+use crate::timer::Platform as PlatformTimer;
 
 #[must_use = "Timed does nothing unless polled"]
 ///Limiter on time to wait for underlying `Future`
@@ -53,27 +53,27 @@ impl<F: Future> Timed<F> {
     }
 }
 
-impl<F: Future + Unpin, T: Oneshot> Timed<F, T> {
+impl<F: Future + Unpin, T: Timer> Timed<F, T> {
     ///Creates new instance with specified timeout
     ///
-    ///Requires to specify `Oneshot` type (e.g. `Timed::<oneshoot::Timer>::new()`)
+    ///Requires to specify `Timer` type (e.g. `Timed::<timer::Platform>::new()`)
     pub fn new(inner: F, timeout: time::Duration) -> Self {
         Timed::Ongoing(T::new(timeout), inner, timeout)
     }
 }
 
-impl<F: Future, T: Oneshot> Timed<F, T> {
+impl<F: Future, T: Timer> Timed<F, T> {
     ///Creates new instance with specified timeout
     ///
     ///Unsafe version of `new` that doesn't require `Unpin`.
     ///
-    ///Requires to specify `Oneshot` type (e.g. `Timed::<oneshoot::Timer>::new()`)
+    ///Requires to specify `Timer` type (e.g. `Timed::<timer::Platform>::new()`)
     pub unsafe fn new_unchecked(inner: F, timeout: time::Duration) -> Self {
         Timed::Ongoing(T::new(timeout), inner, timeout)
     }
 }
 
-impl<F: Future, T: Oneshot> Future for Timed<F, T> {
+impl<F: Future, T: Timer> Future for Timed<F, T> {
     type Output = Result<F::Output, Expired<F, T>>;
 
     fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
@@ -103,17 +103,17 @@ impl<F: Future, T: Oneshot> Future for Timed<F, T> {
     }
 }
 
-impl<F: Future + Unpin, T: Oneshot> Unpin for Timed<F, T> {}
+impl<F: Future + Unpin, T: Timer> Unpin for Timed<F, T> {}
 
 ///Error when [Timed](struct.Timed.html) expires
 ///
 ///Implements `Future` that can be used to restart `Timed`
-///Note, that `Oneshot` starts execution immediately after resolving this Future
+///Note, that `Timer` starts execution immediately after resolving this Future
 pub struct Expired<F, T> {
     inner: Timed<F, T>,
 }
 
-impl<F: Future, T: Oneshot> Expired<F, T> {
+impl<F: Future, T: Timer> Expired<F, T> {
     ///Returns underlying `Future`
     pub fn into_inner(self) -> F {
         match self.inner {
@@ -123,17 +123,17 @@ impl<F: Future, T: Oneshot> Expired<F, T> {
     }
 }
 
-impl<F: Future, T: Oneshot> Future for Expired<F, T> {
+impl<F: Future, T: Timer> Future for Expired<F, T> {
     type Output = Timed<F, T>;
 
-    fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, _: &mut task::Context) -> task::Poll<Self::Output> {
         let mut state = Timed::Stopped;
         let this = unsafe { self.get_unchecked_mut() };
         mem::swap(&mut this.inner, &mut state);
 
         match state {
             Timed::Ongoing(mut timer, future, timeout) => {
-                timer.restart(timeout, ctx.waker());
+                timer.restart(timeout);
 
                 task::Poll::Ready(Timed::Ongoing(timer, future, timeout))
             },
@@ -142,17 +142,17 @@ impl<F: Future, T: Oneshot> Future for Expired<F, T> {
     }
 }
 
-impl<F: Future + Unpin, T: Oneshot> Unpin for Expired<F, T> {}
+impl<F: Future + Unpin, T: Timer> Unpin for Expired<F, T> {}
 
-#[cfg(not(feature = "no_std"))]
-impl<F, T: Oneshot> crate::std::error::Error for Expired<F, T> {}
-impl<F, T: Oneshot> fmt::Debug for Expired<F, T> {
+#[cfg(feature = "std")]
+impl<F, T: Timer> crate::std::error::Error for Expired<F, T> {}
+impl<F, T: Timer> fmt::Debug for Expired<F, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl<F, T: Oneshot> fmt::Display for Expired<F, T> {
+impl<F, T: Timer> fmt::Display for Expired<F, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.inner {
             Timed::Stopped => write!(f, "Future is being re-tried."),

@@ -1,13 +1,10 @@
 //! Posix based timer
 
-#[cfg(feature = "no_std")]
-core::compile_error!("no_std is not supported for posix implementation");
-
-use core::future::Future;
-use core::pin::Pin;
 use core::{mem, ptr, time, task};
+use core::pin::Pin;
+use core::future::Future;
 
-use super::state::TimerState;
+use crate::state::TimerState;
 use crate::alloc::boxed::Box;
 
 mod ffi {
@@ -16,15 +13,15 @@ mod ffi {
     #[allow(non_camel_case_types)]
     pub type timer_t = usize;
 
-    #[inline(always)]
-    unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
-        let value = (*info).si_value();
-
-        value.sival_ptr as *const TimerState
+    #[cfg(feature = "c_wrapper")]
+    pub unsafe extern "C" fn timer_handler(value: libc::sigval) {
+        let state = value.sival_ptr as *const TimerState;
+        (*state).wake();
     }
-    pub unsafe extern "C" fn timer_handler(_sig: libc::c_int, si: *mut libc::siginfo_t, _uc: *mut libc::c_void) {
-        let state = get_value(si);
 
+    #[cfg(not(feature = "c_wrapper"))]
+    pub unsafe extern "C" fn timer_handler(_sig: libc::c_int, si: *mut libc::siginfo_t, _uc: *mut libc::c_void) {
+        let state = (*si).si_value().sival_ptr as *const TimerState;
         (*state).wake();
     }
 
@@ -35,15 +32,18 @@ mod ffi {
     }
 
     extern "C" {
+        #[allow(unused)]
         pub fn timer_create(clockid: libc::clockid_t, sevp: *mut libc::sigevent, timerid: *mut timer_t) -> libc::c_int;
         pub fn timer_settime(timerid: timer_t, flags: libc::c_int, new_value: *const itimerspec, old_value: *mut itimerspec) -> libc::c_int;
         pub fn timer_delete(timerid: timer_t);
     }
 }
 
+#[cfg(not(feature = "c_wrapper"))]
 const TIMER_SIG: libc::c_int = 40;
 
-fn init() {
+#[cfg(not(feature = "c_wrapper"))]
+fn init_sig() {
     let mut sa_mask = mem::MaybeUninit::<libc::sigset_t>::uninit();
     unsafe {
         libc::sigemptyset(sa_mask.as_mut_ptr());
@@ -62,6 +62,22 @@ fn init() {
     }
 }
 
+#[cfg(feature = "c_wrapper")]
+fn time_create(state: *mut TimerState) -> ffi::timer_t {
+    #[link(name = "posix_wrapper", lind = "static")]
+    extern "C" {
+        fn posix_timer(_: Option<unsafe extern "C" fn(value: libc::sigval)>, _: *mut libc::c_void) -> ffi::timer_t;
+    }
+
+    let res = unsafe {
+        posix_timer(Some(ffi::timer_handler), state as *mut libc::c_void)
+    };
+
+    os_assert!(res != 0);
+    res
+}
+
+#[cfg(not(feature = "c_wrapper"))]
 fn time_create(state: *mut TimerState) -> ffi::timer_t {
     let mut event: libc::sigevent = unsafe { mem::zeroed() };
 
@@ -78,7 +94,7 @@ fn time_create(state: *mut TimerState) -> ffi::timer_t {
     let mut res = mem::MaybeUninit::<ffi::timer_t>::uninit();
 
     unsafe {
-        os_assert!(ffi::timer_create(libc::CLOCK_MONOTONIC, &mut event, res.as_mut_ptr()) == 0);
+        os_assert!(ffi::timer_create(libc::CLOCK_REALTIME, &mut event, res.as_mut_ptr()) == 0);
         res.assume_init()
     }
 }
@@ -109,26 +125,34 @@ enum State {
 
 ///Posix Timer
 ///
-///Currently implemented only for `Linux` and `Android` as BSD systems
-///proved to be a bit  problematic
+///When using `c_wrapper` feature implementation uses C shim to create timers which call callbacks
+///from a separate thread.
+///
+///Without it, callback is called from signal handler which limits usable operations within the
+///callback.
 pub struct PosixTimer {
     state: State,
 }
 
-impl super::Oneshot for PosixTimer {
-    fn new(timeout: time::Duration) -> Self {
-        use crate::std::sync::Once;
-        static RUNTIME: Once = Once::new();
-
-        debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
-
-        RUNTIME.call_once(init);
-
+impl PosixTimer {
+    #[inline]
+    ///Creates new instance
+    pub const fn new(time: time::Duration) -> Self {
         Self {
-            state: State::Init(timeout),
+            state: State::Init(time),
         }
     }
+}
 
+impl super::Timer for PosixTimer {
+    #[inline(always)]
+    fn new(timeout: time::Duration) -> Self {
+        assert_time!(timeout);
+        Self::new(timeout)
+    }
+
+
+    #[inline]
     fn is_ticking(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
@@ -136,10 +160,25 @@ impl super::Oneshot for PosixTimer {
         }
     }
 
+    #[inline]
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
             State::Running(_, ref state) => state.is_done(),
+        }
+    }
+
+    fn restart(&mut self, new_value: time::Duration) {
+        assert_time!(new_value);
+
+        match &mut self.state {
+            State::Init(ref mut timeout) => {
+                *timeout = new_value;
+            },
+            State::Running(fd, ref mut state) => {
+                state.reset();
+                set_timer_value(*fd, new_value);
+            }
         }
     }
 
@@ -151,18 +190,31 @@ impl super::Oneshot for PosixTimer {
             }
         }
     }
+}
 
-    fn restart(&mut self, new_value: time::Duration, waker: &task::Waker) {
-        debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
+impl super::SyncTimer for PosixTimer {
+    fn init<R, F: Fn(&TimerState) -> R>(&mut self, init: F) -> R {
+        #[cfg(not(feature = "c_wrapper"))]
+        {
+            static RUNTIME: os_sync::Once = os_sync::Once::new();
+            RUNTIME.call_once(init_sig);
+        }
 
-        match &mut self.state {
-            State::Init(ref mut timeout) => {
-                *timeout = new_value;
-            },
-            State::Running(fd, ref mut state) => {
-                state.register(waker);
-                set_timer_value(*fd, new_value);
-            }
+        if let State::Init(timeout) = self.state {
+            let state = Box::into_raw(Box::new(TimerState::new()));
+            let fd = time_create(state);
+
+            let state = unsafe { Box::from_raw(state) };
+            init(&state);
+
+            set_timer_value(fd, timeout);
+
+            self.state = State::Running(fd, state)
+        }
+
+        match &self.state {
+            State::Running(_, ref state) => init(state),
+            State::Init(_) => unreach!(),
         }
     }
 }
@@ -170,26 +222,9 @@ impl super::Oneshot for PosixTimer {
 impl Future for PosixTimer {
     type Output = ();
 
-    fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        self.state = match &self.state {
-            State::Init(ref timeout) => {
-                let state = Box::into_raw(Box::new(TimerState::new()));
-                let fd = time_create(state);
-
-                let state = unsafe { Box::from_raw(state) };
-                state.register(ctx.waker());
-
-                set_timer_value(fd, *timeout);
-
-                State::Running(fd, state)
-            },
-            State::Running(_, ref state) => match state.is_done() {
-                false => return task::Poll::Pending,
-                true => return task::Poll::Ready(()),
-            }
-        };
-
-        task::Poll::Pending
+    #[inline]
+    fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
+        crate::timer::poll_sync(self.get_mut(), ctx)
     }
 }
 

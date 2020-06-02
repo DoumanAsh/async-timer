@@ -1,8 +1,4 @@
-//! Linux `timerfd` implementation
-
-#[cfg(feature = "no_std")]
-core::compile_error!("no_std is not supported for timerfd implementation");
-
+//! Timerfd based implementation
 use crate::std::io;
 use core::future::Future;
 use core::pin::Pin;
@@ -79,11 +75,6 @@ impl Drop for RawTimer {
     }
 }
 
-enum State {
-    Init(time::Duration),
-    Running(bool),
-}
-
 fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
     #[cfg(not(target_pointer_width = "64"))]
     use core::convert::TryFrom;
@@ -104,50 +95,72 @@ fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
     fd.set(new_value);
 }
 
+enum State {
+    Init(time::Duration),
+    Running(tokio::io::PollEvented<RawTimer>, bool),
+}
+
 ///Linux `timerfd` wrapper
 pub struct TimerFd {
-    fd: tokio::io::PollEvented<RawTimer>,
     state: State,
 }
 
-impl super::Oneshot for TimerFd {
-    fn new(timeout: time::Duration) -> Self {
-        debug_assert!(!(timeout.as_secs() == 0 && timeout.subsec_nanos() == 0), "Zero timeout makes no sense");
-
+impl TimerFd {
+    #[inline]
+    ///Creates new instance
+    pub const fn new(time: time::Duration) -> Self {
         Self {
-            fd: tokio::io::PollEvented::new(RawTimer::new()).expect("To create PollEvented"),
-            state: State::Init(timeout),
+            state: State::Init(time),
         }
     }
+}
 
+impl super::Timer for TimerFd {
+    #[inline(always)]
+    fn new(timeout: time::Duration) -> Self {
+        assert_time!(timeout);
+        debug_assert!(timeout.as_millis() <= u32::max_value().into());
+        Self::new(timeout)
+    }
+
+    #[inline]
     fn is_ticking(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(is_finished) => !*is_finished,
+            State::Running(_, state) => !*state,
         }
     }
 
+    #[inline]
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(is_finished) => *is_finished,
+            State::Running(_, state) => *state
         }
     }
 
-    fn cancel(&mut self) {
-        self.fd.get_mut().set(unsafe { mem::zeroed() });
-    }
-
-    fn restart(&mut self, new_value: time::Duration, _: &task::Waker) {
-        debug_assert!(!(new_value.as_secs() == 0 && new_value.subsec_nanos() == 0), "Zero timeout makes no sense");
+    fn restart(&mut self, new_value: time::Duration) {
+        assert_time!(new_value);
+        debug_assert!(new_value.as_millis() <= u32::max_value().into());
 
         match &mut self.state {
             State::Init(ref mut timeout) => {
                 *timeout = new_value;
+            },
+            State::Running(ref mut fd, ref mut state) => {
+                *state = false;
+                set_timer_value(fd.get_ref(), new_value);
             }
-            State::Running(ref mut is_finished) => {
-                *is_finished = false;
-                set_timer_value(&self.fd.get_ref(), new_value);
+        }
+    }
+
+    fn cancel(&mut self) {
+        match self.state {
+            State::Init(_) => (),
+            State::Running(ref mut fd, _) => {
+                fd.get_mut().set(unsafe {
+                    mem::MaybeUninit::zeroed().assume_init()
+                });
             }
         }
     }
@@ -158,18 +171,20 @@ impl Future for TimerFd {
 
     fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
         loop {
-            self.state = match &self.state {
+            self.state = match &mut self.state {
                 State::Init(ref timeout) => {
-                    set_timer_value(self.fd.get_ref(), *timeout);
-                    State::Running(false)
+                    let fd = tokio::io::PollEvented::new(RawTimer::new()).expect("To create PollEvented");
+                    set_timer_value(fd.get_ref(), *timeout);
+                    State::Running(fd, false)
                 }
-                State::Running(false) => {
-                    match Pin::new(&mut self.fd).poll_read_ready(ctx, mio::Ready::readable()) {
+                State::Running(ref mut fd, false) => {
+                    let fd = Pin::new(fd);
+                    match fd.poll_read_ready(ctx, mio::Ready::readable()) {
                         task::Poll::Pending => return task::Poll::Pending,
                         task::Poll::Ready(ready) => match ready.map(|ready| ready.is_readable()).expect("timerfd cannot be ready") {
                             true => {
-                                let _ = Pin::new(&mut self.fd).clear_read_ready(ctx, mio::Ready::readable());
-                                match self.fd.get_mut().read() {
+                                let _ = fd.clear_read_ready(ctx, mio::Ready::readable());
+                                match fd.get_mut().get_mut().read() {
                                     0 => return task::Poll::Pending,
                                     _ => return task::Poll::Ready(()),
                                 }
@@ -178,7 +193,7 @@ impl Future for TimerFd {
                         },
                     }
                 }
-                State::Running(true) => return task::Poll::Ready(()),
+                State::Running(_, true) => return task::Poll::Ready(()),
             }
         }
     }
