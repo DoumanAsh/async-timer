@@ -84,7 +84,7 @@ pub trait Timer: Send + Sync + Unpin + Future<Output=()> {
 ///
 ///assert!(work.is_ticking());
 ///assert!(!work.is_expired());
-///thread::sleep(time::Duration::from_secs(1));
+///thread::sleep(time::Duration::from_millis(1250)); //timer is not necessary expires immediately
 ///
 ///assert!(work.is_expired());
 ///assert!(EXPIRED.load(Ordering::Acquire));
