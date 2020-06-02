@@ -19,6 +19,8 @@ include = [
 default = []
 # Enables std usage for traits
 std = []
+# Enables C API wrapper for platform code.
+c_wrapper = ["cc"]
 # Enables usage of tokio 0.2
 tokio02 = ["mio", "tokio", "nix", "std"]
 # Enables Stream implementation
@@ -51,3 +53,7 @@ wasm-bindgen = "0.2"
 [dev-dependencies]
 futures-util = "0.3.0"
 tokio = { version = "0.2", features = ["macros", "rt-core"] }
+
+[build-dependencies.cc]
+version = "1"
+optional = true

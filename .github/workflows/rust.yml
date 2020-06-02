@@ -50,3 +50,6 @@ jobs:
 
     - name: Test
       run: cargo test --all --features std,stream
+
+    - name: Test with C wrapper
+      run: cargo test --all --features c_wrapper

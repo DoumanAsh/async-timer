@@ -13,15 +13,15 @@ mod ffi {
     #[allow(non_camel_case_types)]
     pub type timer_t = usize;
 
-    #[inline(always)]
-    unsafe fn get_value(info: *mut libc::siginfo_t) -> *const TimerState {
-        let value = (*info).si_value();
-
-        value.sival_ptr as *const TimerState
+    #[cfg(feature = "c_wrapper")]
+    pub unsafe extern "C" fn timer_handler(value: libc::sigval) {
+        let state = value.sival_ptr as *const TimerState;
+        (*state).wake();
     }
-    pub unsafe extern "C" fn timer_handler(_sig: libc::c_int, si: *mut libc::siginfo_t, _uc: *mut libc::c_void) {
-        let state = get_value(si);
 
+    #[cfg(not(feature = "c_wrapper"))]
+    pub unsafe extern "C" fn timer_handler(_sig: libc::c_int, si: *mut libc::siginfo_t, _uc: *mut libc::c_void) {
+        let state = (*si).si_value().sival_ptr as *const TimerState;
         (*state).wake();
     }
 
@@ -32,14 +32,17 @@ mod ffi {
     }
 
     extern "C" {
+        #[allow(unused)]
         pub fn timer_create(clockid: libc::clockid_t, sevp: *mut libc::sigevent, timerid: *mut timer_t) -> libc::c_int;
         pub fn timer_settime(timerid: timer_t, flags: libc::c_int, new_value: *const itimerspec, old_value: *mut itimerspec) -> libc::c_int;
         pub fn timer_delete(timerid: timer_t);
     }
 }
 
+#[cfg(not(feature = "c_wrapper"))]
 const TIMER_SIG: libc::c_int = 40;
 
+#[cfg(not(feature = "c_wrapper"))]
 fn init_sig() {
     let mut sa_mask = mem::MaybeUninit::<libc::sigset_t>::uninit();
     unsafe {
@@ -59,6 +62,22 @@ fn init_sig() {
     }
 }
 
+#[cfg(feature = "c_wrapper")]
+fn time_create(state: *mut TimerState) -> ffi::timer_t {
+    #[link(name = "posix_wrapper", lind = "static")]
+    extern "C" {
+        fn posix_timer(_: Option<unsafe extern "C" fn(value: libc::sigval)>, _: *mut libc::c_void) -> ffi::timer_t;
+    }
+
+    let res = unsafe {
+        posix_timer(Some(ffi::timer_handler), state as *mut libc::c_void)
+    };
+
+    os_assert!(res != 0);
+    res
+}
+
+#[cfg(not(feature = "c_wrapper"))]
 fn time_create(state: *mut TimerState) -> ffi::timer_t {
     let mut event: libc::sigevent = unsafe { mem::zeroed() };
 
@@ -75,7 +94,7 @@ fn time_create(state: *mut TimerState) -> ffi::timer_t {
     let mut res = mem::MaybeUninit::<ffi::timer_t>::uninit();
 
     unsafe {
-        os_assert!(ffi::timer_create(libc::CLOCK_MONOTONIC, &mut event, res.as_mut_ptr()) == 0);
+        os_assert!(ffi::timer_create(libc::CLOCK_REALTIME, &mut event, res.as_mut_ptr()) == 0);
         res.assume_init()
     }
 }
@@ -172,8 +191,11 @@ impl super::Timer for PosixTimer {
 
 impl super::SyncTimer for PosixTimer {
     fn init<R, F: Fn(&TimerState) -> R>(&mut self, init: F) -> R {
-        static RUNTIME: os_sync::Once = os_sync::Once::new();
-        RUNTIME.call_once(init_sig);
+        #[cfg(not(feature = "c_wrapper"))]
+        {
+            static RUNTIME: os_sync::Once = os_sync::Once::new();
+            RUNTIME.call_once(init_sig);
+        }
 
         if let State::Init(timeout) = self.state {
             let state = Box::into_raw(Box::new(TimerState::new()));

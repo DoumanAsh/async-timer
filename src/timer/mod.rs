@@ -149,9 +149,10 @@ pub use posix::PosixTimer;
 ///Platform alias to POSIX timer
 pub type Platform = posix::PosixTimer;
 #[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
-///Alias to Linux `timerfd` Timer
+///Platform alias to Linux `timerfd` Timer
 pub type Platform = timer_fd::TimerFd;
 #[cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))]
+///Platform alias to POSIX Timer
 pub type SyncPlatform = posix::PosixTimer;
 
 #[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
