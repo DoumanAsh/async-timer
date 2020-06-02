@@ -11,7 +11,7 @@
 //!
 //! ## Features
 //!
-//! - `tokio_on` - Enables implementations that require platform's event loop
+//! - `tokio02` - Enables async timers using tokio 0.2
 #![warn(missing_docs)]
 
 #![no_std]

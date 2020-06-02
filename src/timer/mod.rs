@@ -84,24 +84,40 @@ pub use win::WinTimer;
 ///Platform alias to Windows timer
 pub type Platform = win::WinTimer;
 
+#[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
+mod timer_fd;
+#[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
+pub use timer_fd::TimerFd;
+
 #[cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))]
 mod posix;
 #[cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))]
 pub use posix::PosixTimer;
-#[cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))]
+#[cfg(all(not(feature = "tokio02"), not(any(target_os = "macos", target_os = "ios")), unix))]
 ///Platform alias to POSIX timer
 pub type Platform = posix::PosixTimer;
+#[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
+///Alias to Linux `timerfd` Timer
+pub type Platform = timer_fd::TimerFd;
+
+#[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
+mod kqueue;
+#[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
+pub use kqueue::KqueueTimer;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
-pub mod apple;
+mod apple;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub use apple::AppleTimer;
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(all(not(feature = "tokio02"), any(target_os = "macos", target_os = "ios")))]
 ///Platform alias to Apple Dispatch timer
 pub type Platform = apple::AppleTimer;
+#[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
+///Alias to `kqueue` based Timer
+pub type Platform = kqueue::KqueueTimer;
 
 #[cfg(target_arch = "wasm32")]
-pub mod web;
+mod web;
 #[cfg(target_arch = "wasm32")]
 pub use web::WebTimer;
 #[cfg(target_arch = "wasm32")]

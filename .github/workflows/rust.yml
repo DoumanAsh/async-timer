@@ -44,9 +44,9 @@ jobs:
         rustup target add wasm32-unknown-unknown
         cargo check --target wasm32-unknown-unknown
 
-        #- name: Test with tokio
-        #  if: runner.os != 'Windows'
-        #  run: cargo test --features tokio_on
+    - name: Test with tokio 0.2
+      if: runner.os != 'Windows'
+      run: cargo test --features tokio02
 
     - name: Test
       run: cargo test --all --features std,stream

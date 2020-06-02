@@ -19,8 +19,8 @@ include = [
 default = []
 # Enables std usage for traits
 std = []
-# Enables usage of tokio
-tokio_on = ["mio", "tokio", "nix"]
+# Enables usage of tokio 0.2
+tokio02 = ["mio", "tokio", "nix", "std"]
 # Enables Stream implementation
 stream = ["futures-core"]
 
