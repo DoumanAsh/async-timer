@@ -185,7 +185,10 @@ impl super::Timer for AppleTimer {
     fn cancel(&mut self) {
         match self.state {
             State::Init(_) => (),
-            State::Running(ref mut fd, _) => fd.suspend(),
+            State::Running(ref mut fd, ref state) => {
+                state.cancel();
+                fd.suspend();
+            }
         }
     }
 }

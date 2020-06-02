@@ -185,7 +185,8 @@ impl super::Timer for PosixTimer {
     fn cancel(&mut self) {
         match self.state {
             State::Init(_) => (),
-            State::Running(fd, _) => unsafe {
+            State::Running(fd, ref state) => unsafe {
+                state.cancel();
                 ffi::timer_settime(fd, 0, &mut mem::zeroed(), ptr::null_mut());
             }
         }

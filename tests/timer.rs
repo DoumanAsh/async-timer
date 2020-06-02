@@ -1,9 +1,9 @@
-use async_timer::timer::{Timer, Platform};
+use async_timer::timer::{Timer, Platform, SyncTimer, new_sync_timer};
 
 use std::time;
 
 #[tokio::test]
-async fn test_timer() {
+async fn test_async_timer() {
     let work = Platform::new(time::Duration::from_secs(2));
     assert!(!work.is_ticking());
     assert!(!work.is_expired());
@@ -16,3 +16,20 @@ async fn test_timer() {
     assert!(diff.as_millis() >= 1_500 && diff.as_millis() <= 2_500);
 }
 
+#[test]
+fn test_cancel_timer() {
+    let mut work = new_sync_timer(time::Duration::from_secs(500000));
+
+    assert!(!work.is_ticking());
+    assert!(!work.is_expired());
+
+    assert!(!work.tick());
+
+    assert!(work.is_ticking());
+    assert!(!work.is_expired());
+
+    work.cancel();
+
+    assert!(!work.is_ticking());
+    assert!(work.is_expired());
+}

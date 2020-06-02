@@ -106,7 +106,8 @@ impl super::Timer for WebTimer {
     fn cancel(&mut self) {
         match self.state {
             State::Init(_) => (),
-            State::Running(ref mut fd, _) => {
+            State::Running(ref mut fd, state) => unsafe {
+                (*state).cancel();
                 fd.clear()
             }
         }
@@ -144,9 +145,10 @@ impl Future for WebTimer {
 impl Drop for WebTimer {
     fn drop(&mut self) {
         match self.state {
-            State::Running(ref mut fd, state) => {
+            State::Running(ref mut fd, state) => unsafe {
+                (*state).cancel();
                 fd.clear();
-                unsafe { Box::from_raw(state as *mut TimerState) };
+                Box::from_raw(state as *mut TimerState);
             },
             _ => (),
         }

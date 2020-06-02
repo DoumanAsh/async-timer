@@ -213,10 +213,16 @@ impl TimerState {
     }
 
     #[inline]
+    ///Informs that timer is cancel, therefore no further callbacks to be passed
+    pub fn cancel(&self) {
+        self.woken.store(true, Ordering::Release);
+    }
+
+    #[inline]
     ///Registers `Callback` with the state.
     ///
     ///This callback is used replaces previous one, if any.
-    pub fn register_callback<C: Callback>(&self, cb: C) {
+    pub fn register<C: Callback>(&self, cb: C) {
         cb.register(&self.inner);
     }
 

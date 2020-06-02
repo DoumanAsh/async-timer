@@ -79,7 +79,7 @@ pub trait Timer: Send + Sync + Unpin + Future<Output=()> {
 ///assert!(!work.is_ticking());
 ///assert!(!work.is_expired());
 ///
-///work.init(|state| state.register_callback(on_expire as fn()));
+///work.init(|state| state.register(on_expire as fn()));
 ///work.tick();
 ///
 ///assert!(work.is_ticking());
@@ -117,7 +117,7 @@ pub trait SyncTimer: Timer {
 #[inline(always)]
 fn poll_sync<T: SyncTimer>(timer: &mut T, ctx: &mut task::Context) -> task::Poll<()> {
     timer.init(|state| {
-        state.register_callback(ctx.waker());
+        state.register(ctx.waker());
         match state.is_done() {
             true => task::Poll::Ready(()),
             false => task::Poll::Pending
@@ -203,19 +203,4 @@ pub const fn new_timer(timeout: time::Duration) -> Platform {
 ///Creates new timer, which always implements `SyncTimer`
 pub const fn new_sync_timer(timeout: time::Duration) -> SyncPlatform {
     SyncPlatform::new(timeout)
-}
-
-#[inline]
-///Sets globally resolution, used by timers.
-///
-///Does nothing if platform provides no way to control resolution.
-///
-///Following is set:
-///
-///- `Windows` allows to set resolution within range `[0..u32::max_value()]`
-pub fn set_resolution(_resolution: time::Duration) {
-    #[cfg(windows)]
-    {
-        win::RESOLUTION.store(_resolution.as_millis() as u32, core::sync::atomic::Ordering::Relaxed)
-    }
 }

@@ -1,45 +1,55 @@
 //! Windows API based timer
 
-use core::{task, time};
+use core::{task, time, ptr, mem};
 use core::pin::Pin;
 use core::future::Future;
-use core::sync::atomic::{AtomicU32, Ordering};
 
 use crate::state::{TimerState};
 use crate::alloc::boxed::Box;
 
-//We can probably achieve even more with `NtSetTimerResolution` but it is still at most 0.5ms so
-//who cares
-pub(crate) const RESOLUTION: AtomicU32 = AtomicU32::new(10); //ms
+mod ffi {
+    pub use winapi::shared::minwindef::{FILETIME};
+    pub use winapi::um::threadpoolapiset::{
+        CloseThreadpoolTimer,
+        CreateThreadpoolTimer,
+        SetThreadpoolTimerEx,
+        WaitForThreadpoolTimerCallbacks,
+    };
 
-type Callback = Option<unsafe extern "system" fn(_: u32, _:u32, data: usize, _: usize, _: usize)>;
-
-#[link(name = "winmm", lind = "static")]
-extern "system" {
-    fn timeKillEvent(id: u32) -> u32;
-    fn timeSetEvent(delay: u32, resolution: u32, cb: Callback, data: usize, typ: u32) -> u32;
+    pub use winapi::ctypes::{c_ulong, c_void};
+    pub use winapi::um::winnt::{PTP_TIMER_CALLBACK, PTP_CALLBACK_INSTANCE, PTP_TIMER};
 }
 
-unsafe extern "system" fn timer_callback(_: u32, _: u32, data: usize, _: usize, _: usize) {
+unsafe extern "system" fn timer_callback(_: ffi::PTP_CALLBACK_INSTANCE, data: *mut ffi::c_void, _: ffi::PTP_TIMER) {
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
-    let state = data as *mut () as *mut TimerState;
+    let state = data as *mut TimerState;
 
     (*state).wake();
 }
 
-fn create_timer(state: *mut TimerState, timeout: time::Duration) -> u32 {
-    let res = unsafe {
-        timeSetEvent(timeout.as_millis() as u32, RESOLUTION.load(Ordering::Relaxed), Some(timer_callback), state as usize, 0)
+fn time_create(state: *mut TimerState) -> ffi::PTP_TIMER {
+    let timer = unsafe {
+        ffi::CreateThreadpoolTimer(Some(timer_callback), state as *mut ffi::c_void, ptr::null_mut())
     };
+    os_assert!(!timer.is_null());
 
-    os_assert!(res != 0);
+    timer
+}
 
-    res
+fn set_timer_value(fd: ffi::PTP_TIMER, timeout: time::Duration) {
+    let mut ticks = i64::from(timeout.subsec_nanos() / 100);
+    ticks += (timeout.as_secs() * 10_000_000) as i64;
+    let ticks = -ticks;
+
+    unsafe {
+        let mut time: ffi::FILETIME = mem::transmute(ticks);
+        ffi::SetThreadpoolTimerEx(fd, &mut time, 0, 0);
+    }
 }
 
 enum State {
     Init(time::Duration),
-    Running(u32, *mut TimerState),
+    Running(ffi::PTP_TIMER, Box<TimerState>),
 }
 
 unsafe impl Send for State {}
@@ -72,7 +82,7 @@ impl super::Timer for WinTimer {
     fn is_ticking(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(_, ref state) => unsafe { !(**state).is_done() },
+            State::Running(_, ref state) => !state.is_done(),
         }
     }
 
@@ -80,7 +90,7 @@ impl super::Timer for WinTimer {
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(_, ref state) => unsafe { (**state).is_done() },
+            State::Running(_, ref state) => state.is_done(),
         }
     }
 
@@ -92,10 +102,9 @@ impl super::Timer for WinTimer {
             State::Init(ref mut timeout) => {
                 *timeout = new_value;
             },
-            State::Running(ref mut fd, ref state) => unsafe {
-                (**state).reset();
-                timeKillEvent(*fd);
-                *fd = create_timer(*state, new_value);
+            State::Running(ref fd, ref state) => {
+                state.reset();
+                set_timer_value(*fd, new_value);
             }
         }
     }
@@ -103,9 +112,10 @@ impl super::Timer for WinTimer {
     fn cancel(&mut self) {
         match self.state {
             State::Init(_) => (),
-            State::Running(ref mut fd, _) => unsafe {
-                timeKillEvent(*fd);
-                *fd = 0;
+            State::Running(fd, ref state) => unsafe {
+                state.cancel();
+                ffi::SetThreadpoolTimerEx(fd, ptr::null_mut(), 0, 0);
+                ffi::WaitForThreadpoolTimerCallbacks(fd, 1);
             }
         }
     }
@@ -115,16 +125,19 @@ impl super::SyncTimer for WinTimer {
     fn init<R, F: Fn(&TimerState) -> R>(&mut self, init: F) -> R {
         if let State::Init(timeout) = self.state {
             let state = Box::into_raw(Box::new(TimerState::new()));
-            unsafe {
-                init(&*state);
-            }
-            let fd = create_timer(state, timeout);
+            let fd = time_create(state);
+
+            let state = unsafe { Box::from_raw(state) };
+
+            init(&state);
+
+            set_timer_value(fd, timeout);
 
             self.state = State::Running(fd, state)
         }
 
         match &self.state {
-            State::Running(_, ref state) => init(unsafe { &**state }),
+            State::Running(_, ref state) => init(&state),
             State::Init(_) => unreach!(),
         }
     }
@@ -143,9 +156,11 @@ impl Drop for WinTimer {
     fn drop(&mut self) {
         match self.state {
             State::Init(_) => (),
-            State::Running(fd, state) => unsafe {
-                timeKillEvent(fd);
-                Box::from_raw(state as *mut TimerState);
+            State::Running(fd, ref state) => unsafe {
+                state.cancel();
+                ffi::SetThreadpoolTimerEx(fd, ptr::null_mut(), 0, 0);
+                ffi::WaitForThreadpoolTimerCallbacks(fd, 1);
+                ffi::CloseThreadpoolTimer(fd);
             }
         }
     }

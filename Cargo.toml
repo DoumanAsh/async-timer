@@ -1,6 +1,6 @@
 [package]
 name = "async-timer"
-version = "1.0.0-beta.1"
+version = "1.0.0-beta.2"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
 description = "Timers for Rust async story"
@@ -37,6 +37,10 @@ default-features = true
 # posix only
 [target.'cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))'.dependencies]
 os-sync = "0.3"
+
+[target.'cfg(windows)'.dependencies.winapi]
+version = "0.3"
+features = ["threadpoolapiset"]
 
 [target.'cfg(any(target_os = "macos", target_os = "ios", unix))'.dependencies]
 libc = { version = "0.2.60", default-features = false }
