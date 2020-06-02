@@ -1,9 +1,9 @@
 # async-timer
 
-![](https://github.com/DoumanAsh/async-timer/workflows/Rust/badge.svg)
+![Rust](https://github.com/DoumanAsh/async-timer/workflows/Rust/badge.svg?branch=master)
 [![Crates.io](https://img.shields.io/crates/v/async-timer.svg)](https://crates.io/crates/async-timer)
 [![Documentation](https://docs.rs/async-timer/badge.svg)](https://docs.rs/crate/async-timer/)
-[![dependency status](https://deps.rs/crate/async-timer/0.7.3/status.svg)](https://deps.rs/crate/async-timer)
+[![dependency status](https://deps.rs/crate/async-timer/1.0.0-beta.1/status.svg)](https://deps.rs/crate/async-timer)
 
 Timer facilities for Rust's async story
 
@@ -45,9 +45,3 @@ async fn do_a_while() {
     }
 }
 ```
-
-## Q&A
-
-Q: When it is going to be async/await?
-
-A: When async/await will become `no_std`

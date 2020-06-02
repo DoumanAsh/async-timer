@@ -152,7 +152,6 @@ impl super::Timer for AppleTimer {
         Self::new(timeout)
     }
 
-
     #[inline]
     fn is_ticking(&self) -> bool {
         match &self.state {
