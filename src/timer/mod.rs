@@ -18,13 +18,13 @@ use crate::state::TimerState;
 ///## Usage
 ///
 ///```no_run
-///use async_timer::timer::{Timer, Platform};
+///use async_timer::timer::{Timer, new_timer};
 ///
 ///use core::time;
 ///use core::pin::Pin;
 ///
 ///async fn do_something() {
-///    let mut work = Platform::new(time::Duration::from_secs(2));
+///    let mut work = new_timer(time::Duration::from_secs(2));
 ///    assert!(!work.is_ticking()); //Timer starts only on initial poll
 ///    assert!(!work.is_expired());
 ///    Pin::new(&mut work).await; //Remember await consumes future, and we'd prefer to avoid that in order to re-use timer
@@ -63,7 +63,7 @@ pub trait Timer: Send + Sync + Unpin + Future<Output=()> {
 ///## Usage
 ///
 ///```
-///use async_timer::timer::{Timer, SyncTimer, SyncPlatform};
+///use async_timer::timer::{Timer, SyncTimer, new_sync_timer};
 ///
 ///use core::sync::atomic::{AtomicBool, Ordering};
 ///use core::time;
@@ -75,7 +75,7 @@ pub trait Timer: Send + Sync + Unpin + Future<Output=()> {
 ///    EXPIRED.store(true, Ordering::Release);
 ///}
 ///
-///let mut work = SyncPlatform::new(time::Duration::from_secs(1));
+///let mut work = new_sync_timer(time::Duration::from_secs(1));
 ///assert!(!work.is_ticking());
 ///assert!(!work.is_expired());
 ///

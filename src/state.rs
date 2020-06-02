@@ -232,6 +232,9 @@ impl TimerState {
 }
 
 ///Interface to timer's callback
+///
+///It is guaranteed that callback is invoked only once, unless `Timer` is restarted or
+///`TimerState::reset` is called(happens when timer is restarted)
 pub trait Callback {
     #[doc(hidden)]
     fn register(self, waker: &AtomicWaker);
@@ -241,6 +244,13 @@ impl<'a> Callback for &'a task::Waker {
     #[inline(always)]
     fn register(self, waker: &AtomicWaker) {
         waker.register(self)
+    }
+}
+
+impl Callback for task::Waker {
+    #[inline(always)]
+    fn register(self, waker: &AtomicWaker) {
+        waker.register_owned(self)
     }
 }
 
