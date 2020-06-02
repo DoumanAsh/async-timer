@@ -83,6 +83,9 @@ pub use win::WinTimer;
 #[cfg(windows)]
 ///Platform alias to Windows timer
 pub type Platform = win::WinTimer;
+#[cfg(windows)]
+///Platform alias to Windows timer
+pub type SyncPlatform = win::WinTimer;
 
 #[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
 mod timer_fd;
@@ -99,12 +102,13 @@ pub type Platform = posix::PosixTimer;
 #[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
 ///Alias to Linux `timerfd` Timer
 pub type Platform = timer_fd::TimerFd;
+#[cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))]
+pub type SyncPlatform = posix::PosixTimer;
 
 #[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
 mod kqueue;
 #[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
 pub use kqueue::KqueueTimer;
-
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod apple;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -113,8 +117,11 @@ pub use apple::AppleTimer;
 ///Platform alias to Apple Dispatch timer
 pub type Platform = apple::AppleTimer;
 #[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
-///Alias to `kqueue` based Timer
+///Platform Alias to `kqueue` based Timer
 pub type Platform = kqueue::KqueueTimer;
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+///Platform Alias to `kqueue` based Timer
+pub type SyncPlatform = apple::AppleTimer;
 
 #[cfg(target_arch = "wasm32")]
 mod web;
@@ -123,17 +130,29 @@ pub use web::WebTimer;
 #[cfg(target_arch = "wasm32")]
 ///Platform alias to WASM Timer
 pub type Platform = web::WebTimer;
+#[cfg(target_arch = "wasm32")]
+///Platform alias to WASM Timer
+pub type SyncPlatform = web::WebTimer;
 
 pub mod dummy;
 pub use dummy::DummyTimer;
 #[cfg(not(any(windows, target_arch = "wasm32", unix)))]
 ///Platform alias to Dummy Timer as no OS implementation is available.
 pub type Platform = dummy::DummyTimer;
+#[cfg(not(any(windows, target_arch = "wasm32", unix)))]
+///Platform alias to Dummy Timer as no OS implementation is available.
+pub type SyncPlatform = dummy::DummyTimer;
 
 #[inline]
 ///Creates new timer, timer type depends on platform.
 pub const fn new_timer(timeout: time::Duration) -> Platform {
     Platform::new(timeout)
+}
+
+#[inline]
+///Creates new timer, which always implements `SyncTimer`
+pub const fn new_sync_timer(timeout: time::Duration) -> SyncPlatform {
+    SyncPlatform::new(timeout)
 }
 
 #[inline]

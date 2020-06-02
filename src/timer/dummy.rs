@@ -36,6 +36,12 @@ impl super::Timer for DummyTimer {
     }
 }
 
+impl super::SyncTimer for DummyTimer {
+    fn init<R, F: Fn(&crate::state::TimerState) -> R>(&mut self, _: F) -> R {
+        unimplemented!();
+    }
+}
+
 impl Future for DummyTimer {
     type Output = ();
 

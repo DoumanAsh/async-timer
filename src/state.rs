@@ -212,12 +212,6 @@ impl TimerState {
         self.woken.store(false, Ordering::Release);
     }
 
-    #[inline(always)]
-    ///Registers `Waker` with state
-    pub fn register(&self, waker: &task::Waker) {
-        self.register_callback(waker);
-    }
-
     #[inline]
     ///Registers `Callback` with the state.
     ///
