@@ -5,6 +5,7 @@ use std::time;
 #[tokio::test]
 async fn test_timer() {
     let work = Platform::new(time::Duration::from_secs(2));
+    assert!(!work.is_ticking());
     assert!(!work.is_expired());
 
     let before = time::SystemTime::now();

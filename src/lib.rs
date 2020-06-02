@@ -2,7 +2,8 @@
 //!
 //! ## Timers
 //!
-//! - [Timer](timer/trait.Timer.html) interface to one-shot [Platform Timer](timer/type.Platform.html)
+//! - [Timer](timer/trait.Timer.html) interface to one-shot [Platform Timer](timer/type.Platform.html), may require event loop.
+//! - [SyncTimer](timer/trait.SyncTimer.html) interface to one-shot [Platform Timer](timer/type.SyncPlatform.html), does not require event loop.
 //!
 //! ## Primitives
 //!
@@ -31,7 +32,8 @@ pub mod timer;
 mod timed;
 mod interval;
 
-pub use timer::{Timer, new_timer};
+pub use state::Callback;
+pub use timer::{SyncTimer, Timer, new_sync_timer, new_timer};
 pub use timed::{Timed, Expired};
 pub use interval::Interval;
 

@@ -14,6 +14,24 @@ use crate::state::TimerState;
 ///- Posix compatible `timer_create`, available on major Posix-compliant systems. Depends on availability of `siginfo_t::si_value` method.
 ///- Wasm uses Web API `SetTimeout`
 ///- Dummy timer is used  when no implementation is available. Panics when used.
+///
+///## Usage
+///
+///```no_run
+///use async_timer::timer::{Timer, Platform};
+///
+///use core::time;
+///use core::pin::Pin;
+///
+///async fn do_something() {
+///    let mut work = Platform::new(time::Duration::from_secs(2));
+///    assert!(!work.is_ticking()); //Timer starts only on initial poll
+///    assert!(!work.is_expired());
+///    Pin::new(&mut work).await; //Remember await consumes future, and we'd prefer to avoid that in order to re-use timer
+///    assert!(work.is_expired());
+///
+///}
+///```
 pub trait Timer: Send + Sync + Unpin + Future<Output=()> {
     ///Creates new instance
     fn new(timeout: time::Duration) -> Self;
@@ -41,7 +59,38 @@ pub trait Timer: Send + Sync + Unpin + Future<Output=()> {
 ///As notification is not done via event loop, timer has to store callback in its own state.
 ///
 ///Whenever async timer relies on async event loop to handle notifications
-pub trait SyncTimer {
+///
+///## Usage
+///
+///```
+///use async_timer::timer::{Timer, SyncTimer, SyncPlatform};
+///
+///use core::sync::atomic::{AtomicBool, Ordering};
+///use core::time;
+///
+///use std::thread;
+///
+///static EXPIRED: AtomicBool = AtomicBool::new(false);
+///fn on_expire() {
+///    EXPIRED.store(true, Ordering::Release);
+///}
+///
+///let mut work = SyncPlatform::new(time::Duration::from_secs(1));
+///assert!(!work.is_ticking());
+///assert!(!work.is_expired());
+///
+///work.init(|state| state.register_callback(on_expire as fn()));
+///work.tick();
+///
+///assert!(work.is_ticking());
+///assert!(!work.is_expired());
+///thread::sleep(time::Duration::from_secs(1));
+///
+///assert!(work.is_expired());
+///assert!(EXPIRED.load(Ordering::Acquire));
+///```
+///
+pub trait SyncTimer: Timer {
     ///Initializes timer state, performing initial arming and allowing to access `TimerState`
     ///during initialization
     ///
@@ -134,7 +183,7 @@ pub type Platform = web::WebTimer;
 ///Platform alias to WASM Timer
 pub type SyncPlatform = web::WebTimer;
 
-pub mod dummy;
+mod dummy;
 pub use dummy::DummyTimer;
 #[cfg(not(any(windows, target_arch = "wasm32", unix)))]
 ///Platform alias to Dummy Timer as no OS implementation is available.
