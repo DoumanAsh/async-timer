@@ -1,6 +1,6 @@
 [package]
 name = "async-timer"
-version = "1.0.0-beta.2"
+version = "1.0.0-beta.3"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
 description = "Timers for Rust async story"
@@ -11,6 +11,7 @@ keywords = ["timer", "async", "wasm"]
 categories = ["asynchronous", "wasm", "no-std"]
 include = [
     "**/*.rs",
+    "**/*.c",
     "Cargo.toml",
     "README.md"
 ]
