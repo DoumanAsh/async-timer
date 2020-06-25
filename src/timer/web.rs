@@ -28,7 +28,7 @@ impl Drop for TimerHandle {
     }
 }
 
-fn time_create(timeout: time::Duration, state: *const TimerState) -> TimerHandle {
+fn timer_create(timeout: time::Duration, state: *const TimerState) -> TimerHandle {
     let timeout = timeout.as_millis() as u32;
 
     let cb = wasm_bindgen::closure::Closure::once(move || unsafe {
@@ -98,7 +98,7 @@ impl super::Timer for WebTimer {
             },
             State::Running(fd, ref state) => {
                 unsafe { (**state).reset() };
-                *fd = time_create(new_value, *state);
+                *fd = timer_create(new_value, *state);
             }
         }
     }
@@ -121,7 +121,7 @@ impl super::SyncTimer for WebTimer {
             init(&state);
 
             let state = Box::into_raw(Box::new(state));
-            let fd = time_create(timeout, state);
+            let fd = timer_create(timeout, state);
 
             self.state = State::Running(fd, state)
         }

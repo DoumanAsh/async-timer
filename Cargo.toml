@@ -1,6 +1,6 @@
 [package]
 name = "async-timer"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
 description = "Timers for Rust async story"
@@ -28,7 +28,7 @@ tokio02 = ["mio", "tokio", "nix", "std"]
 stream = ["futures-core"]
 
 [dependencies]
-error-code = "1"
+error-code = "2"
 
 [dependencies.futures-core]
 version = "0.3"
