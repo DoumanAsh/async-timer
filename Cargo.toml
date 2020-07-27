@@ -1,6 +1,6 @@
 [package]
 name = "async-timer"
-version = "1.0.0-beta.4"
+version = "1.0.0-beta.5"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
 description = "Timers for Rust async story"
@@ -50,7 +50,7 @@ tokio = { version = "0.2", default-features = false, optional = true, features =
 
 #kqueue needs nix
 [target.'cfg(any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
-nix = { version = "0.17", optional = true }
+nix = { version = "0.18", optional = true }
 
 [target.'cfg(any(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen = "0.2"
