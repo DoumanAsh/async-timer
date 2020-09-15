@@ -1,5 +1,12 @@
 //! Async timer lib
 //!
+//! ## Accuracy
+//!
+//! Regular timers that do not rely on async event loop tend to be on par with user space timers
+//! like in `tokio`.
+//! If that's not suitable for you you should enable event loop based timers which in most cases
+//! give you the most accurate timers possible on unix platforms (See features.)
+//!
 //! ## Timers
 //!
 //! - [Timer](timer/trait.Timer.html) interface to one-shot [Platform Timer](timer/type.Platform.html), may require event loop.

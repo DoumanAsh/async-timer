@@ -9,7 +9,21 @@ Timer facilities for Rust's async story
 
 Minimal Rust version: 1.36
 
-## Timed
+## Accuracy
+
+Regular timers that do not rely on async event loop tend to be on par with user space timers
+like in `tokio`.
+If that's not suitable for you you should enable event loop based timers which in most cases
+give you the most accurate timers possible on unix platforms (See features.)
+
+## Features
+
+- `tokio02` - Enables event loop based timers using tokio 0.2, providing higher accuracy than regular callback based timers on Linux/BSD/Apple platforms
+- `c_wrapper` - Uses C shim to create bindings to platform API, which may be more reliable than `libc`.
+
+## Examples
+
+### Timed
 
 ```rust
 async fn job() {
@@ -28,7 +42,7 @@ async fn do_job() {
 }
 ```
 
-## Interval
+### Interval
 
 ```rust
 async fn job() {
