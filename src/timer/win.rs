@@ -109,6 +109,22 @@ impl super::Timer for WinTimer {
         }
     }
 
+    fn restart_ctx(&mut self, new_value: time::Duration, waker: &task::Waker) {
+        assert_time!(new_value);
+        debug_assert!(new_value.as_millis() <= u32::max_value().into());
+
+        match &mut self.state {
+            State::Init(ref mut timeout) => {
+                *timeout = new_value;
+            },
+            State::Running(ref fd, ref state) => {
+                state.register(waker);
+                state.reset();
+                set_timer_value(*fd, new_value);
+            }
+        }
+    }
+
     fn cancel(&mut self) {
         match self.state {
             State::Init(_) => (),

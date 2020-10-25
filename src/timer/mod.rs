@@ -48,6 +48,9 @@ pub trait Timer: Send + Sync + Unpin + Future<Output=()> {
     ///Restarts timer with new timeout value.
     fn restart(&mut self, timeout: time::Duration);
 
+    ///Restarts timer with new timeout value and waker.
+    fn restart_ctx(&mut self, timeout: time::Duration, waker: &task::Waker);
+
     ///Cancels timer, if it is still ongoing.
     fn cancel(&mut self);
 }

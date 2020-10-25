@@ -1,12 +1,12 @@
-use async_timer::{Timed};
-use async_timer::timer::{new_timer};
+use core::pin::Pin;
 
 use std::time;
 
 #[tokio::test]
 async fn test_timed() {
-    let future = new_timer(time::Duration::from_secs(4));
-    let work = Timed::platform_new(future, time::Duration::from_secs(3));
+    let mut future = async_timer::new_timer(time::Duration::from_secs(4));
+    let future = Pin::new(&mut future);
+    let work = async_timer::timed(future, time::Duration::from_secs(3));
 
     let before = time::SystemTime::now();
 

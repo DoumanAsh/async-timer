@@ -14,7 +14,7 @@
 //!
 //! ## Primitives
 //!
-//! - [Timed](enum.Timed.html) - A wrapper over future that allows to limit time for the future to resolve.
+//! - [Timed](struct.Timed.html) - A wrapper over future that allows to limit time for the future to resolve.
 //! - [Interval](struct.Interval.html) - Periodic timer, that on each completition returns itself to poll once again with the same interval.
 //!
 //! ## Features
@@ -31,7 +31,9 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-use core::{time, future};
+use core::time;
+use core::pin::Pin;
+use core::future::Future;
 
 #[macro_use]
 mod utils;
@@ -45,13 +47,13 @@ pub use timer::{SyncTimer, Timer, new_sync_timer, new_timer};
 pub use timed::{Timed, Expired};
 pub use interval::Interval;
 
-///Run future in timed fashion using default Platform timer.
-pub fn timed<F: future::Future>(job: F, timeout: time::Duration) -> impl future::Future<Output=Result<F::Output, Expired<F, timer::Platform>>> {
-    unsafe {
-        Timed::platform_new_unchecked(job, timeout)
-    }
+#[inline(always)]
+///Creates timed future with default Platform timer.
+pub fn timed<'a, F: Future>(fut: Pin<&'a mut F>, timeout: time::Duration) -> Timed<'a, F, timer::Platform> {
+    Timed::platform_new(fut, timeout)
 }
 
+#[inline(always)]
 ///Creates interval with default Platform timer.
 pub fn interval(interval: time::Duration) -> Interval<timer::Platform> {
     Interval::platform_new(interval)

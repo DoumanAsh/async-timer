@@ -1,11 +1,17 @@
 //! Timed future
 
 use core::future::Future;
-use core::{fmt, task, time, mem};
+use core::{fmt, task, time};
 use core::pin::Pin;
 
 use crate::timer::Timer;
 use crate::timer::Platform as PlatformTimer;
+
+struct State<'a, F, T> {
+    timer: T,
+    timeout: time::Duration,
+    fut: Pin<&'a mut F>
+}
 
 #[must_use = "Timed does nothing unless polled"]
 ///Limiter on time to wait for underlying `Future`
@@ -17,8 +23,12 @@ use crate::timer::Platform as PlatformTimer;
 ///}
 ///
 ///async fn do_job() {
+///    let mut job = job();
+///    let job = unsafe {
+///        core::pin::Pin::new_unchecked(&mut job)
+///    };
 ///    let work = unsafe {
-///        async_timer::Timed::platform_new_unchecked(job(), core::time::Duration::from_secs(1))
+///        async_timer::Timed::platform_new(job, core::time::Duration::from_secs(1))
 ///    };
 ///
 ///    match work.await {
@@ -28,137 +38,99 @@ use crate::timer::Platform as PlatformTimer;
 ///    }
 ///}
 ///```
-pub enum Timed<F, T=PlatformTimer> {
-    #[doc(hidden)]
-    Ongoing(T, F, time::Duration),
-    #[doc(hidden)]
-    Stopped,
+pub struct Timed<'a, F, T=PlatformTimer> {
+    state: Option<State<'a, F, T>>,
 }
 
-impl<F: Future + Unpin> Timed<F> {
+impl<'a, F: Future> Timed<'a, F> {
     #[inline]
     ///Creates new instance using [Timer](../oneshot/type.Timer.html) alias.
-    pub fn platform_new(inner: F, timeout: time::Duration) -> Self {
-        Timed::<F, PlatformTimer>::new(inner, timeout)
+    pub fn platform_new(fut: Pin<&'a mut F>, timeout: time::Duration) -> Self {
+        Self::new(fut, timeout)
     }
 }
 
-impl<F: Future> Timed<F> {
-    #[inline]
-    ///Creates new instance using [Timer](../oneshot/type.Timer.html) alias.
-    ///
-    ///Unsafe version of `platform_new` that doesn't require `Unpin`.
-    pub unsafe fn platform_new_unchecked(inner: F, timeout: time::Duration) -> Self {
-        Timed::<F, PlatformTimer>::new_unchecked(inner, timeout)
-    }
-}
-
-impl<F: Future + Unpin, T: Timer> Timed<F, T> {
-    ///Creates new instance with specified timeout
-    ///
-    ///Requires to specify `Timer` type (e.g. `Timed::<timer::Platform>::new()`)
-    pub fn new(inner: F, timeout: time::Duration) -> Self {
-        Timed::Ongoing(T::new(timeout), inner, timeout)
-    }
-}
-
-impl<F: Future, T: Timer> Timed<F, T> {
+impl<'a, F: Future, T: Timer> Timed<'a, F, T> {
     ///Creates new instance with specified timeout
     ///
     ///Unsafe version of `new` that doesn't require `Unpin`.
     ///
     ///Requires to specify `Timer` type (e.g. `Timed::<timer::Platform>::new()`)
-    pub unsafe fn new_unchecked(inner: F, timeout: time::Duration) -> Self {
-        Timed::Ongoing(T::new(timeout), inner, timeout)
-    }
-}
-
-impl<F: Future, T: Timer> Future for Timed<F, T> {
-    type Output = Result<F::Output, Expired<F, T>>;
-
-    fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        let mut state = Timed::Stopped;
-        let mut this = unsafe { self.get_unchecked_mut() };
-        mem::swap(&mut state, &mut this);
-
-        match state {
-            Timed::Ongoing(mut timer, mut future, timeout) => {
-                match Future::poll(unsafe { Pin::new_unchecked(&mut future) }, ctx) {
-                    task::Poll::Pending => (),
-                    task::Poll::Ready(result) => return task::Poll::Ready(Ok(result)),
-                }
-
-                match Future::poll(Pin::new(&mut timer), ctx) {
-                    task::Poll::Pending => (),
-                    task::Poll::Ready(_) => return task::Poll::Ready(Err(Expired {
-                        inner: Timed::Ongoing(timer, future, timeout),
-                    })),
-                }
-
-                *this = Timed::Ongoing(timer, future, timeout);
-                task::Poll::Pending
-            },
-            Timed::Stopped => task::Poll::Pending,
+    pub fn new(fut: Pin<&'a mut F>, timeout: time::Duration) -> Self {
+        Self {
+            state: Some(State {
+                timer: T::new(timeout),
+                timeout,
+                fut,
+            })
         }
     }
 }
 
-impl<F: Future + Unpin, T: Timer> Unpin for Timed<F, T> {}
+impl<'a, F: Future, T: Timer> Future for Timed<'a, F, T> {
+    type Output = Result<F::Output, Expired<'a, F, T>>;
 
+    fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
+        let this = self.get_mut();
+
+        if let Some(state) = this.state.as_mut() {
+            match Future::poll(state.fut.as_mut(), ctx) {
+                task::Poll::Pending => (),
+                task::Poll::Ready(result) => return task::Poll::Ready(Ok(result)),
+            }
+
+            match Future::poll(Pin::new(&mut state.timer), ctx) {
+                task::Poll::Pending => (),
+                task::Poll::Ready(_) => return task::Poll::Ready(Err(Expired(this.state.take()))),
+            }
+        }
+
+        task::Poll::Pending
+    }
+}
+
+#[must_use = "Expire should be handled as error or to restart Timed"]
 ///Error when [Timed](struct.Timed.html) expires
 ///
 ///Implements `Future` that can be used to restart `Timed`
-///Note, that `Timer` starts execution immediately after resolving this Future
-pub struct Expired<F, T> {
-    inner: Timed<F, T>,
-}
+///Note, that `Timer` starts execution immediately after resolving this Future.
+pub struct Expired<'a, F, T>(Option<State<'a, F, T>>);
 
-impl<F: Future, T: Timer> Expired<F, T> {
-    ///Returns underlying `Future`
-    pub fn into_inner(self) -> F {
-        match self.inner {
-            Timed::Ongoing(_, fut, _) => fut,
-            _ => unreach!(),
-        }
-    }
-}
+impl<'a, F: Future, T: Timer> Future for Expired<'a, F, T> {
+    type Output = Timed<'a, F, T>;
 
-impl<F: Future, T: Timer> Future for Expired<F, T> {
-    type Output = Timed<F, T>;
+    fn poll(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
+        let this = self.get_mut();
 
-    fn poll(self: Pin<&mut Self>, _: &mut task::Context) -> task::Poll<Self::Output> {
-        let mut state = Timed::Stopped;
-        let this = unsafe { self.get_unchecked_mut() };
-        mem::swap(&mut this.inner, &mut state);
+        match this.0.take() {
+            Some(mut state) => {
+                state.timer.restart_ctx(state.timeout, ctx.waker());
 
-        match state {
-            Timed::Ongoing(mut timer, future, timeout) => {
-                timer.restart(timeout);
-
-                task::Poll::Ready(Timed::Ongoing(timer, future, timeout))
+                task::Poll::Ready(Timed {
+                    state: Some(state)
+                })
             },
-            _ => task::Poll::Pending,
+            None => task::Poll::Pending,
         }
     }
 }
-
-impl<F: Future + Unpin, T: Timer> Unpin for Expired<F, T> {}
 
 #[cfg(feature = "std")]
-impl<F, T: Timer> crate::std::error::Error for Expired<F, T> {}
-impl<F, T: Timer> fmt::Debug for Expired<F, T> {
+impl<'a, F, T: Timer> crate::std::error::Error for Expired<'a, F, T> {}
+
+impl<'a, F, T: Timer> fmt::Debug for Expired<'a, F, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl<F, T: Timer> fmt::Display for Expired<F, T> {
+impl<'a, F, T: Timer> fmt::Display for Expired<'a, F, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.inner {
-            Timed::Stopped => write!(f, "Future is being re-tried."),
-            Timed::Ongoing(_, _, timeout) => match timeout.as_secs() {
-                0 => write!(f, "Future expired in {} ms", timeout.as_millis()),
-                secs => write!(f, "Future expired in {} seconds and {} ms", secs, timeout.subsec_millis()),
+        match self.0.as_ref() {
+            None => write!(f, "Future is being re-tried."),
+            Some(state) => match state.timeout.as_secs() {
+                0 => write!(f, "Future expired in {} ms", state.timeout.as_millis()),
+                secs => write!(f, "Future expired in {} seconds and {} ms", secs, state.timeout.subsec_millis()),
             },
         }
     }

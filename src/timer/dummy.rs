@@ -34,6 +34,10 @@ impl super::Timer for DummyTimer {
     fn restart(&mut self, _: time::Duration) {
         unimplemented!();
     }
+
+    fn restart_ctx(&mut self, _: time::Duration, _: &task::Waker) {
+        unimplemented!();
+    }
 }
 
 impl super::SyncTimer for DummyTimer {

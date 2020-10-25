@@ -182,6 +182,21 @@ impl super::Timer for AppleTimer {
         }
     }
 
+    fn restart_ctx(&mut self, new_value: time::Duration, waker: &task::Waker) {
+        assert_time!(new_value);
+
+        match &mut self.state {
+            State::Init(ref mut timeout) => {
+                *timeout = new_value;
+            },
+            State::Running(fd, ref mut state) => {
+                state.register(waker);
+                state.reset();
+                fd.set_delay(new_value);
+            }
+        }
+    }
+
     fn cancel(&mut self) {
         match self.state {
             State::Init(_) => (),

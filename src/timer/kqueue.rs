@@ -137,6 +137,11 @@ impl super::Timer for KqueueTimer {
         }
     }
 
+    #[inline(always)]
+    fn restart_ctx(&mut self, new_value: time::Duration, _: &task::Waker) {
+        self.restart(new_value)
+    }
+
     fn cancel(&mut self) {
         match self.state {
             State::Init(_) => (),
