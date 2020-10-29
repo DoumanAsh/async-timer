@@ -1,4 +1,8 @@
 use core::pin::Pin;
+#[cfg(feature = "tokio02")]
+use tokio_02 as tokio;
+#[cfg(not(feature = "tokio02"))]
+use tokio_03 as tokio;
 
 use std::time;
 

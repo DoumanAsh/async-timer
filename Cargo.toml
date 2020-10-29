@@ -23,7 +23,9 @@ std = []
 # Enables C API wrapper for platform code.
 c_wrapper = ["cc"]
 # Enables usage of tokio 0.2
-tokio02 = ["mio", "tokio", "nix", "std"]
+tokio02 = ["mio", "tokio_02", "nix", "std"]
+# Enables usage of tokio 0.3
+tokio03 = ["tokio_03", "nix", "std"]
 # Enables Stream implementation
 stream = ["futures-core"]
 
@@ -46,7 +48,8 @@ features = ["threadpoolapiset"]
 [target.'cfg(any(target_os = "macos", target_os = "ios", unix))'.dependencies]
 libc = { version = "0.2.60", default-features = false }
 mio = { version = "0.6", optional = true }
-tokio = { version = "0.2", default-features = false, optional = true, features = ["io-driver"] }
+tokio_02 = { package = "tokio", version = "0.2", default-features = false, optional = true, features = ["io-driver"] }
+tokio_03 = { package = "tokio", version = "0.3.2", default-features = false, optional = true, features = ["net"] }
 
 #kqueue needs nix
 [target.'cfg(any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
@@ -57,7 +60,8 @@ wasm-bindgen = "0.2"
 
 [dev-dependencies]
 futures-util = "0.3.0"
-tokio = { version = "0.2", features = ["macros", "rt-core"] }
+tokio_02 = { package = "tokio", version = "0.2", features = ["macros", "rt-core"] }
+tokio_03 = { package = "tokio", version = "0.3.2", default-features = false, features = ["macros", "rt"] }
 
 [build-dependencies.cc]
 version = "1"

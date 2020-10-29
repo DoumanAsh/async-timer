@@ -80,7 +80,7 @@ impl Drop for RawTimer {
 
 enum State {
     Init(time::Duration),
-    Running(tokio::io::PollEvented<RawTimer>, bool),
+    Running(tokio_02::io::PollEvented<RawTimer>, bool),
 }
 
 ///Timer based on `kqueue`
@@ -157,7 +157,7 @@ impl Future for KqueueTimer {
         loop {
             self.state = match &mut self.state {
                 State::Init(ref timeout) => {
-                    let fd = tokio::io::PollEvented::new(RawTimer::new()).expect("To create PollEvented");
+                    let fd = tokio_02::io::PollEvented::new(RawTimer::new()).expect("To create PollEvented");
                     fd.get_ref().set(*timeout);
                     State::Running(fd, false)
                 }

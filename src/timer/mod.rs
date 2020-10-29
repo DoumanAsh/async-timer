@@ -139,6 +139,14 @@ pub type Platform = win::WinTimer;
 ///Platform alias to Windows timer
 pub type SyncPlatform = win::WinTimer;
 
+#[cfg(all(feature = "tokio03", unix))]
+mod async_tokio03;
+#[cfg(all(feature = "tokio03", unix))]
+pub use async_tokio03::AsyncTimer;
+#[cfg(all(feature = "tokio03", unix))]
+///Timer based on tokio's `AsyncFd`
+pub type Platform = AsyncTimer;
+
 #[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
 mod timer_fd;
 #[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
@@ -148,7 +156,7 @@ pub use timer_fd::TimerFd;
 mod posix;
 #[cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))]
 pub use posix::PosixTimer;
-#[cfg(all(not(feature = "tokio02"), not(any(target_os = "macos", target_os = "ios")), unix))]
+#[cfg(all(not(feature = "tokio02"), not(feature = "tokio03"), not(any(target_os = "macos", target_os = "ios")), unix))]
 ///Platform alias to POSIX timer
 pub type Platform = posix::PosixTimer;
 #[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
@@ -166,7 +174,7 @@ pub use kqueue::KqueueTimer;
 mod apple;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub use apple::AppleTimer;
-#[cfg(all(not(feature = "tokio02"), any(target_os = "macos", target_os = "ios")))]
+#[cfg(all(not(feature = "tokio02"), not(feature = "tokio03"), any(target_os = "macos", target_os = "ios")))]
 ///Platform alias to Apple Dispatch timer
 pub type Platform = apple::AppleTimer;
 #[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]

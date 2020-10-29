@@ -46,7 +46,11 @@ jobs:
 
     - name: Test with tokio 0.2
       if: runner.os != 'Windows'
-      run: cargo test --features tokio02
+      run: cargo test --features tokio02,stream
+
+    - name: Test with tokio 0.3
+      if: runner.os != 'Windows'
+      run: cargo test --features tokio03 -- --nocapture
 
     - name: Test
       run: cargo test --all --features std,stream

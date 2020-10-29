@@ -19,7 +19,8 @@
 //!
 //! ## Features
 //!
-//! - `tokio02` - Enables event loop based timers using tokio 0.2, providing higher accuracy than regular callback based timers on Linux/BSD/Apple platforms
+//! - `tokio02` - Enables event loop based timers using tokio 0.2, providing higher accuracy than regular callback based timers on Linux/BSD/Apple platforms.
+//! - `tokio03` - Enables event loop based timers using tokio 0.3, providing higher resolution timer as `tokio02`.
 //! - `c_wrapper` - Uses C shim to create bindings to platform API, which may be more reliable than `libc`.
 #![warn(missing_docs)]
 

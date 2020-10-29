@@ -97,7 +97,7 @@ fn set_timer_value(fd: &RawTimer, timeout: time::Duration) {
 
 enum State {
     Init(time::Duration),
-    Running(tokio::io::PollEvented<RawTimer>, bool),
+    Running(tokio_02::io::PollEvented<RawTimer>, bool),
 }
 
 ///Linux `timerfd` wrapper
@@ -178,7 +178,7 @@ impl Future for TimerFd {
         loop {
             self.state = match &mut self.state {
                 State::Init(ref timeout) => {
-                    let fd = tokio::io::PollEvented::new(RawTimer::new()).expect("To create PollEvented");
+                    let fd = tokio_02::io::PollEvented::new(RawTimer::new()).expect("To create PollEvented");
                     set_timer_value(fd.get_ref(), *timeout);
                     State::Running(fd, false)
                 }
