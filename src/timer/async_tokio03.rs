@@ -219,7 +219,7 @@ impl<T: TimerFd> Future for AsyncTokioTimer<T> {
 
     fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
         if let State::Init(ref timeout) = &self.state {
-            let mut fd = AsyncFd::new(T::new()).expect("To create AsyncFd");
+            let mut fd = AsyncFd::with_interest(T::new(), tokio::io::Interest::READABLE).expect("To create AsyncFd");
             fd.get_mut().set(*timeout);
             self.state = State::Running(fd, false)
         };
