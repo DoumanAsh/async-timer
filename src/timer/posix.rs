@@ -212,7 +212,8 @@ impl super::SyncTimer for PosixTimer {
     fn init<R, F: Fn(&TimerState) -> R>(&mut self, init: F) -> R {
         #[cfg(not(feature = "c_wrapper"))]
         {
-            static RUNTIME: os_sync::Once = os_sync::Once::new();
+            extern crate std;
+            static RUNTIME: std::sync::Once = std::sync::Once::new();
             RUNTIME.call_once(init_sig);
         }
 

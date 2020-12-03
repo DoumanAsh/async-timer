@@ -18,7 +18,7 @@ include = [
 
 [features]
 default = []
-# Enables std usage for traits
+# Enables std usage
 std = []
 # Enables C API wrapper for platform code.
 c_wrapper = ["cc"]
@@ -34,10 +34,6 @@ error-code = "2"
 version = "0.3"
 optional = true
 default-features = true
-
-# posix only
-[target.'cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))'.dependencies]
-os-sync = "0.3"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
