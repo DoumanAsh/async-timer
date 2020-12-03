@@ -56,7 +56,7 @@ async fn do_a_while() {
 
     while times < 5 {
         job().await;
-        interval.as_mut().await;
+        interval.wait().await;
         times += 1;
     }
 }
