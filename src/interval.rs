@@ -9,7 +9,7 @@ use crate::timer::Platform as PlatformTimer;
 
 ///Periodic Timer
 ///
-///On each completition, underlying timer is restarted and therefore `Future` can be polled once
+///On each completion, underlying timer is restarted and therefore `Future` can be polled once
 ///more.
 ///
 ///## Usage
@@ -24,7 +24,7 @@ use crate::timer::Platform as PlatformTimer;
 ///
 ///    while times < 5 {
 ///        job().await;
-///        interval.as_mut().await;
+///        interval.wait().await;
 ///        times += 1;
 ///    }
 ///}
@@ -66,8 +66,8 @@ impl<T: Timer> Interval<T> {
     }
 
     #[inline(always)]
-    ///Gets mutable reference
-    pub fn as_mut(&mut self) -> &mut Self {
+    ///Returns future for next expiration.
+    pub fn wait<'a>(&'a mut self) -> impl Future<Output=()> + 'a {
         self
     }
 }

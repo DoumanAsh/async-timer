@@ -19,9 +19,10 @@
 //!
 //! ## Features
 //!
-//! - `tokio02` - Enables event loop based timers using tokio 0.2, providing higher accuracy than regular callback based timers on Linux/BSD/Apple platforms.
-//! - `tokio03` - Enables event loop based timers using tokio 0.3, providing higher resolution timer as `tokio02`.
+//! - `tokio03` - Enables event loop based timers using tokio 0.3, providing higher resolution timers on unix platforms.
 //! - `c_wrapper` - Uses C shim to create bindings to platform API, which may be more reliable than `libc`.
+//! - `std` - Enables usage of std types (e.g. Error)
+//! - `stream` - Enables `Stream` implementation for `Interval`
 #![warn(missing_docs)]
 
 #![no_std]

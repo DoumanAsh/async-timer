@@ -147,39 +147,24 @@ pub use async_tokio03::AsyncTimer;
 ///Timer based on tokio's `AsyncFd`
 pub type Platform = AsyncTimer;
 
-#[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
-mod timer_fd;
-#[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
-pub use timer_fd::TimerFd;
-
 #[cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))]
 mod posix;
 #[cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))]
 pub use posix::PosixTimer;
-#[cfg(all(not(feature = "tokio02"), not(feature = "tokio03"), not(any(target_os = "macos", target_os = "ios")), unix))]
+#[cfg(all(not(feature = "tokio03"), not(any(target_os = "macos", target_os = "ios")), unix))]
 ///Platform alias to POSIX timer
 pub type Platform = posix::PosixTimer;
-#[cfg(all(feature = "tokio02", any(target_os = "linux", target_os = "android")))]
-///Platform alias to Linux `timerfd` Timer
-pub type Platform = timer_fd::TimerFd;
 #[cfg(all(unix, not(any(target_os = "macos", target_os = "ios"))))]
 ///Platform alias to POSIX Timer
 pub type SyncPlatform = posix::PosixTimer;
 
-#[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
-mod kqueue;
-#[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
-pub use kqueue::KqueueTimer;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod apple;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub use apple::AppleTimer;
-#[cfg(all(not(feature = "tokio02"), not(feature = "tokio03"), any(target_os = "macos", target_os = "ios")))]
+#[cfg(all(not(feature = "tokio03"), any(target_os = "macos", target_os = "ios")))]
 ///Platform alias to Apple Dispatch timer
 pub type Platform = apple::AppleTimer;
-#[cfg(all(feature = "tokio02", any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd")))]
-///Platform Alias to `kqueue` based Timer
-pub type Platform = kqueue::KqueueTimer;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 ///Platform Alias to `kqueue` based Timer
 pub type SyncPlatform = apple::AppleTimer;

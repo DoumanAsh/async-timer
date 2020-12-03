@@ -1,7 +1,4 @@
 use async_timer::timer::{Timer, Platform, SyncTimer, new_sync_timer};
-#[cfg(feature = "tokio02")]
-use tokio_02 as tokio;
-#[cfg(not(feature = "tokio02"))]
 use tokio_03 as tokio;
 
 use std::time;

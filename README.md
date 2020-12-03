@@ -3,7 +3,7 @@
 ![Rust](https://github.com/DoumanAsh/async-timer/workflows/Rust/badge.svg?branch=master)
 [![Crates.io](https://img.shields.io/crates/v/async-timer.svg)](https://crates.io/crates/async-timer)
 [![Documentation](https://docs.rs/async-timer/badge.svg)](https://docs.rs/crate/async-timer/)
-[![dependency status](https://deps.rs/crate/async-timer/1.0.0-beta.5/status.svg)](https://deps.rs/crate/async-timer)
+[![dependency status](https://deps.rs/crate/async-timer/1.0.0-beta.6/status.svg)](https://deps.rs/crate/async-timer)
 
 Timer facilities for Rust's async story
 
@@ -18,9 +18,10 @@ give you the most accurate timers possible on unix platforms (See features.)
 
 ## Features
 
-- `tokio02` - Enables event loop based timers using tokio 0.2, providing higher accuracy than regular callback based timers on Linux/BSD/Apple platforms
-- `tokio03` - Enables event loop based timers using tokio 0.3, providing higher resolution timer as `tokio02`.
+- `tokio03` - Enables event loop based timers using tokio 0.3, providing higher resolution timers on unix platforms.
 - `c_wrapper` - Uses C shim to create bindings to platform API, which may be more reliable than `libc`.
+- `std` - Enables usage of std types (e.g. Error)
+- `stream` - Enables `Stream` implementation for `Interval`
 
 ## Examples
 
