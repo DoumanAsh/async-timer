@@ -1,5 +1,5 @@
 use async_timer::timer::{Timer, Platform, SyncTimer, new_sync_timer};
-use tokio_03 as tokio;
+use tokio_1 as tokio;
 
 use std::time;
 
