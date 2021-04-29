@@ -19,7 +19,7 @@ include = [
 [features]
 default = []
 # Enables std usage
-std = []
+std = ["error-code/std"]
 # Enables C API wrapper for platform code.
 c_wrapper = ["cc"]
 # Enables usage of tokio 1.0
@@ -28,7 +28,7 @@ tokio1 = ["tokio_1", "nix", "std"]
 stream = ["futures-core"]
 
 [dependencies]
-error-code = "2"
+error-code = "2.2"
 
 [dependencies.futures-core]
 version = "0.3"

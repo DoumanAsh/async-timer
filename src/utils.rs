@@ -28,13 +28,10 @@ macro_rules! os_assert {
     })
 }
 
-#[allow(unused)]
-pub(crate) const ZERO_TIME_FAIL: &str = "Zero timeout makes no sense";
-
 #[allow(unused_macros)]
 #[doc(hidden)]
 macro_rules! assert_time {
     ($time:expr) => ({
-        debug_assert!(!($time.as_secs() == 0 && $time.subsec_nanos() == 0), $crate::utils::ZERO_TIME_FAIL);
+        debug_assert!(!($time.as_secs() == 0 && $time.subsec_nanos() == 0), "Zero timeout makes no sense");
     })
 }

@@ -7,8 +7,6 @@
 
 Timer facilities for Rust's async story
 
-Minimal Rust version: 1.36
-
 ## Accuracy
 
 Regular timers that do not rely on async event loop tend to be on par with user space timers
