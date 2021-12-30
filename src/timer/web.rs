@@ -13,12 +13,15 @@ extern "C" {
     fn clearTimeout(id: i32);
 }
 
-struct TimerHandle(i32);
+struct TimerHandle {
+    timeout_id: i32,
+    _closure: wasm_bindgen::closure::Closure<dyn FnMut()>,
+}
 
 impl TimerHandle {
     #[inline]
     fn clear(&mut self) {
-        clearTimeout(self.0)
+        clearTimeout(self.timeout_id)
     }
 }
 
@@ -31,12 +34,15 @@ impl Drop for TimerHandle {
 fn timer_create(timeout: time::Duration, state: *const TimerState) -> TimerHandle {
     let timeout = timeout.as_millis() as u32;
 
-    let cb = wasm_bindgen::closure::Closure::once(move || unsafe {
+    let closure = wasm_bindgen::closure::Closure::once(move || unsafe {
         (*state).wake();
     });
-    let handle = setTimeout(&cb, timeout);
+    let timeout_id = setTimeout(&closure, timeout);
 
-    TimerHandle(handle)
+    TimerHandle {
+        timeout_id,
+        _closure: closure,
+    }
 }
 
 enum State {
