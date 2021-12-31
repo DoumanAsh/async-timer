@@ -1,6 +1,6 @@
 [package]
 name = "async-timer"
-version = "1.0.0-beta.7"
+version = "1.0.0-beta.8"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
 description = "Timers for Rust async story"
@@ -41,17 +41,17 @@ features = ["threadpoolapiset"]
 
 [target.'cfg(any(target_os = "macos", target_os = "ios", unix))'.dependencies]
 libc = { version = "0.2.60", default-features = false }
-tokio_1 = { package = "tokio", version = "1", default-features = false, optional = true, features = ["net"] }
+tokio_1 = { package = "tokio", version = "1.15", default-features = false, optional = true, features = ["net"] }
 
 #kqueue needs nix
 [target.'cfg(any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
-nix = { version = "0.20", optional = true }
+nix = { version = "0.23", optional = true }
 
 [target.'cfg(any(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen = "0.2"
 
 [dev-dependencies]
-tokio_1 = { package = "tokio", version = "1", default-features = false, features = ["macros", "rt"] }
+tokio_1 = { package = "tokio", version = "1.15", default-features = false, features = ["macros", "rt"] }
 
 [build-dependencies.cc]
 version = "1"
