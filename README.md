@@ -3,7 +3,7 @@
 ![Rust](https://github.com/DoumanAsh/async-timer/workflows/Rust/badge.svg?branch=master)
 [![Crates.io](https://img.shields.io/crates/v/async-timer.svg)](https://crates.io/crates/async-timer)
 [![Documentation](https://docs.rs/async-timer/badge.svg)](https://docs.rs/crate/async-timer/)
-[![dependency status](https://deps.rs/crate/async-timer/1.0.0-beta.8/status.svg)](https://deps.rs/crate/async-timer)
+[![dependency status](https://deps.rs/crate/async-timer/1.0.0-beta.9/status.svg)](https://deps.rs/crate/async-timer)
 
 Timer facilities for Rust's async story
 
