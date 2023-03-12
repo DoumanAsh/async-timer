@@ -1,6 +1,6 @@
 //!State module
 
-use core::{task};
+use core::task;
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
@@ -68,7 +68,7 @@ impl AtomicWaker {
 
     ///This is the same function as `register` but working with owned version.
     fn register_owned(&self, waker: task::Waker) {
-        match self.state.compare_and_swap(WAITING, REGISTERING, Ordering::Acquire) {
+        match self.state.compare_exchange(WAITING, REGISTERING, Ordering::Acquire, Ordering::Acquire).unwrap_or_else(|err| err) {
             WAITING => {
                 unsafe {
                     *self.waker.get() = waker;
@@ -95,7 +95,7 @@ impl AtomicWaker {
     }
 
     fn register(&self, waker: &task::Waker) {
-        match self.state.compare_and_swap(WAITING, REGISTERING, Ordering::Acquire) {
+        match self.state.compare_exchange(WAITING, REGISTERING, Ordering::Acquire, Ordering::Acquire).unwrap_or_else(|err| err) {
             WAITING => {
                 unsafe {
                     // Locked acquired, update the waker cell
@@ -231,7 +231,7 @@ impl TimerState {
     ///
     ///After that `Waker` is no longer registered with `TimerState`
     pub(crate) fn wake(&self) {
-        if !self.woken.compare_and_swap(false, true, Ordering::SeqCst) {
+        if !self.woken.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).unwrap_or_else(|err| err) {
             self.inner.wake();
         }
     }
@@ -260,7 +260,7 @@ impl Callback for task::Waker {
     }
 }
 
-impl<'a> Callback for fn() {
+impl Callback for fn() {
     fn register(self, waker: &AtomicWaker) {
         waker.register_owned(plain_fn::waker(self));
     }

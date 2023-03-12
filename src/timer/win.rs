@@ -4,23 +4,32 @@ use core::{task, time, ptr, mem};
 use core::pin::Pin;
 use core::future::Future;
 
-use crate::state::{TimerState};
+use crate::state::TimerState;
 use crate::alloc::boxed::Box;
 
+#[allow(non_snake_case, non_camel_case_types)]
 mod ffi {
-    pub use winapi::shared::minwindef::{FILETIME};
-    pub use winapi::um::threadpoolapiset::{
-        CloseThreadpoolTimer,
-        CreateThreadpoolTimer,
-        SetThreadpoolTimerEx,
-        WaitForThreadpoolTimerCallbacks,
-    };
+    pub use core::ffi::c_void;
+    use libc::{c_ulong, c_int};
 
-    pub use winapi::ctypes::{c_ulong, c_void};
-    pub use winapi::um::winnt::{PTP_TIMER_CALLBACK, PTP_CALLBACK_INSTANCE, PTP_TIMER};
+    #[repr(C)]
+    pub struct FILETIME {
+        pub dwLowDateTime: c_ulong,
+        pub dwHighDateTime: c_ulong,
+    }
+    pub type PTP_TIMER = *mut c_void;
+
+    type PTP_TIMER_CALLBACK = Option<unsafe extern "system" fn(Instance: *mut c_void, Context: *mut c_void, Timer: *mut c_void)>;
+
+    extern "system" {
+        pub fn CloseThreadpoolTimer(pti: *mut c_void);
+        pub fn CreateThreadpoolTimer(pfnti: PTP_TIMER_CALLBACK, pv: *mut c_void, pcbe: *mut c_void) -> *mut c_void;
+        pub fn SetThreadpoolTimerEx(pti: *mut c_void, pftDueTime: *mut FILETIME, msPeriod: c_ulong, msWindowLength: c_ulong) -> c_int;
+        pub fn WaitForThreadpoolTimerCallbacks(pti: PTP_TIMER, fCancelPendingCallbacks: c_int);
+    }
 }
 
-unsafe extern "system" fn timer_callback(_: ffi::PTP_CALLBACK_INSTANCE, data: *mut ffi::c_void, _: ffi::PTP_TIMER) {
+unsafe extern "system" fn timer_callback(_: *mut ffi::c_void, data: *mut ffi::c_void, _: *mut ffi::c_void) {
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
     let state = data as *mut TimerState;
 
