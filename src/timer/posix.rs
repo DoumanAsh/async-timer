@@ -64,7 +64,7 @@ fn init_sig() {
 
 #[cfg(feature = "c_wrapper")]
 fn time_create(state: *mut TimerState) -> ffi::timer_t {
-    #[link(name = "posix_wrapper", link = "static")]
+    #[link(name = "posix_wrapper", kind = "static")]
     extern "C" {
         fn posix_timer(_: Option<unsafe extern "C" fn(value: libc::sigval)>, _: *mut libc::c_void) -> ffi::timer_t;
     }
