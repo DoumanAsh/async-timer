@@ -1,7 +1,7 @@
 use tokio_1 as tokio;
 
 use tokio::io::unix::AsyncFd;
-use libc::{c_int};
+use libc::c_int;
 
 use core::{task, time};
 use core::pin::Pin;

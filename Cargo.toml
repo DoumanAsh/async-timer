@@ -28,7 +28,7 @@ tokio1 = ["tokio_1", "nix", "std"]
 stream = ["futures-core"]
 
 [dependencies]
-error-code = "2.2"
+error-code = "3"
 
 [dependencies.futures-core]
 version = "0.3"
@@ -40,6 +40,7 @@ libc = { version = "0.2.60", default-features = false }
 tokio_1 = { package = "tokio", version = "1.15", default-features = false, optional = true, features = ["net"] }
 
 #kqueue needs nix
+#Avoid bumping nix for now because these idiots break perfectly usable API
 [target.'cfg(any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
 nix = { version = "0.26", optional = true }
 

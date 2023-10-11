@@ -23,7 +23,7 @@ macro_rules! unreach {
 macro_rules! os_assert {
     ($cond:expr) => ({
         if !($cond) {
-            panic!("Assertion '{}' failed. {}", stringify!($cond), error_code::SystemError::last());
+            panic!("Assertion '{}' failed. {}", stringify!($cond), error_code::ErrorCode::last_system());
         }
     })
 }
