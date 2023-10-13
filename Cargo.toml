@@ -23,7 +23,7 @@ std = ["error-code/std"]
 # Enables C API wrapper for platform code.
 c_wrapper = ["cc"]
 # Enables usage of tokio 1.0
-tokio1 = ["tokio_1", "nix", "std"]
+tokio1 = ["tokio_1", "std"]
 # Enables Stream implementation
 stream = ["futures-core"]
 
@@ -38,11 +38,6 @@ default-features = true
 [target.'cfg(any(target_os = "macos", target_os = "ios", windows, unix))'.dependencies]
 libc = { version = "0.2.60", default-features = false }
 tokio_1 = { package = "tokio", version = "1.15", default-features = false, optional = true, features = ["net"] }
-
-#kqueue needs nix
-#Avoid bumping nix for now because these idiots break perfectly usable API
-[target.'cfg(any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
-nix = { version = "0.26", optional = true }
 
 [target.'cfg(any(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen = "0.2"

@@ -96,7 +96,9 @@ impl TimerFd for RawTimer {
 #[cfg(any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))]
 impl TimerFd for RawTimer {
     fn new() -> Self {
-        let fd = nix::sys::event::kqueue().unwrap_or(-1);
+        let fd = unsafe {
+            libc::kqueue()
+        };
 
         //If you hit this, then most likely you run into OS imposed limit on file descriptor number
         os_assert!(fd != -1);
@@ -104,42 +106,80 @@ impl TimerFd for RawTimer {
     }
 
     fn set(&mut self, time: time::Duration) {
-        use nix::sys::event::*;
+        let timeout = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
+        let mut empty = [];
+        let mut event = libc::kevent {
+            ident: 1,
+            filter: libc::EVFILT_TIMER,
+            flags: libc::EV_ADD | libc::EV_ENABLE | libc::EV_ONESHOT,
+            fflags: libc::NOTE_NSECONDS,
+            data: 0,
+            udata: core::ptr::null_mut(),
+        };
 
-        let flags = EventFlag::EV_ADD | EventFlag::EV_ENABLE | EventFlag::EV_ONESHOT;
         let mut time = time.as_nanos();
-        let mut unit = FilterFlag::NOTE_NSECONDS;
-
         if time > isize::max_value() as u128 {
-            unit = FilterFlag::NOTE_USECONDS;
+            event.fflags = libc::NOTE_USECONDS;
             time /= 1_000;
         }
         if time > isize::max_value() as u128 {
-            unit = FilterFlag::empty(); // default is milliseconds
+            event.fflags = 0; //default value is ms
             time /= 1_000;
         }
         if time > isize::max_value() as u128 {
-            unit = FilterFlag::NOTE_SECONDS;
+            event.fflags = libc::NOTE_SECONDS;
             time /= 1_000;
         }
 
-        let time = time as isize;
-        kevent(self.0, &[KEvent::new(1, EventFilter::EVFILT_TIMER, flags, unit, time, 0)], &mut [], 0).expect("To arm timer");
+        event.data = time as _;
+        let set = unsafe {
+            libc::kevent(self.0, &event, 1, empty.as_mut_ptr(), 0, &timeout)
+        };
+        os_assert!(set != -1);
     }
 
     fn unset(&mut self) {
-        use nix::sys::event::*;
-
-        let flags = EventFlag::EV_DELETE;
-        kevent(self.0, &[KEvent::new(1, EventFilter::EVFILT_TIMER, flags, FilterFlag::empty(), 0, 0)], &mut [], 0).expect("To disarm timer");
+        let timeout = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
+        let mut empty = [];
+        let event = libc::kevent {
+            ident: 1,
+            filter: libc::EVFILT_TIMER,
+            flags: libc::EV_DELETE,
+            fflags: 0,
+            data: 0,
+            udata: core::ptr::null_mut(),
+        };
+        let unset = unsafe {
+            libc::kevent(self.0, &event, 1, empty.as_mut_ptr(), 0, &timeout)
+        };
+        os_assert!(unset != -1);
     }
 
     fn read(&mut self) -> usize {
-        use nix::sys::event::*;
-
-        let mut ev = [KEvent::new(0, EventFilter::EVFILT_TIMER, EventFlag::empty(), FilterFlag::empty(), 0, 0)];
-
-        kevent(self.0, &[], &mut ev[..], 0).expect("To execute kevent")
+        let timeout = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
+        let empty = [];
+        let mut event = libc::kevent {
+            ident: 0,
+            filter: libc::EVFILT_TIMER,
+            flags: 0,
+            fflags: 0,
+            data: 0,
+            udata: core::ptr::null_mut(),
+        };
+        let read = unsafe {
+            libc::kevent(self.0, empty.as_ptr(), 0, &mut event, 1, &timeout)
+        };
+        os_assert!(read != -1);
+        read as _
     }
 }
 
