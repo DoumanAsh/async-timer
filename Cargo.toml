@@ -28,11 +28,6 @@ tokio1 = ["tokio_1", "std"]
 [dependencies]
 error-code = "3"
 
-[dependencies.futures-core]
-version = "0.3"
-optional = true
-default-features = true
-
 [target.'cfg(any(target_os = "macos", target_os = "ios", windows, unix))'.dependencies]
 libc = { version = "0.2.60", default-features = false }
 tokio_1 = { package = "tokio", version = "1.15", default-features = false, optional = true, features = ["net"] }
