@@ -24,8 +24,6 @@ std = ["error-code/std"]
 c_wrapper = ["cc"]
 # Enables usage of tokio 1.0
 tokio1 = ["tokio_1", "std"]
-# Enables Stream implementation
-stream = ["futures-core"]
 
 [dependencies]
 error-code = "3"

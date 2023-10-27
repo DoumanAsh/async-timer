@@ -19,7 +19,6 @@ give you the most accurate timers possible on unix platforms (See features.)
 - `tokio1` - Enables event loop based timers using tokio, providing higher resolution timers on unix platforms.
 - `c_wrapper` - Uses C shim to create bindings to platform API, which may be more reliable than `libc`.
 - `std` - Enables usage of std types (e.g. Error)
-- `stream` - Enables `Stream` implementation for `Interval`
 
 ## Examples
 

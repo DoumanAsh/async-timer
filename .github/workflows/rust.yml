@@ -55,7 +55,7 @@ jobs:
       run: cargo test --features tokio1 -- --nocapture
 
     - name: Test
-      run: cargo test --all --features std,stream
+      run: cargo test --all --features std
 
     - name: Test with C wrapper
       if: runner.os == 'Linux'

@@ -85,14 +85,3 @@ impl<T: Timer> Future for &'_ mut Interval<T> {
         }
     }
 }
-
-#[cfg(feature = "stream")]
-impl<T: Timer> futures_core::stream::Stream for Interval<T> {
-    type Item = ();
-
-    #[inline]
-    fn poll_next(self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Option<Self::Item>> {
-        let mut this = self.get_mut();
-        Future::poll(Pin::new(&mut this), ctx).map(|res| Some(res))
-    }
-}
