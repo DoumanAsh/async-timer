@@ -30,13 +30,13 @@ error-code = "3"
 
 [target.'cfg(any(target_os = "macos", target_os = "ios", windows, unix))'.dependencies]
 libc = { version = "0.2.60", default-features = false }
-tokio_1 = { package = "tokio", version = "1.15", default-features = false, optional = true, features = ["net"] }
+tokio_1 = { package = "tokio", version = "1.35", default-features = false, optional = true, features = ["net"] }
 
 [target.'cfg(any(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen = "0.2"
 
 [dev-dependencies]
-tokio_1 = { package = "tokio", version = "1.15", default-features = false, features = ["macros", "rt"] }
+tokio_1 = { package = "tokio", version = "1.35", default-features = false, features = ["macros", "rt"] }
 
 [build-dependencies.cc]
 version = "1"
