@@ -24,7 +24,6 @@
 //! - `std` - Enables usage of std types (e.g. Error)
 #![warn(missing_docs)]
 
-#![no_std]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::style, clippy::needless_lifetimes))]
 
 extern crate alloc;
