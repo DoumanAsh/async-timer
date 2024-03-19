@@ -1,6 +1,6 @@
 //! Windows API based timer
 
-use core::{task, time, ptr, mem};
+use core::{task, time, ptr};
 use core::pin::Pin;
 use core::future::Future;
 
@@ -13,10 +13,17 @@ mod ffi {
     use libc::{c_ulong, c_int};
 
     #[repr(C)]
+    #[derive(Copy, Clone)]
     pub struct FILETIME {
         pub dwLowDateTime: c_ulong,
         pub dwHighDateTime: c_ulong,
     }
+    #[repr(C)]
+    pub union ULONGTIME {
+        pub full: i64,
+        pub time: FILETIME,
+    }
+
     pub type PTP_TIMER = *mut c_void;
 
     type PTP_TIMER_CALLBACK = Option<unsafe extern "system" fn(Instance: *mut c_void, Context: *mut c_void, Timer: *mut c_void)>;
@@ -51,8 +58,10 @@ fn set_timer_value(fd: ffi::PTP_TIMER, timeout: time::Duration) {
     let ticks = -ticks;
 
     unsafe {
-        let mut time: ffi::FILETIME = mem::transmute(ticks);
-        ffi::SetThreadpoolTimerEx(fd, &mut time, 0, 0);
+        let mut time = ffi::ULONGTIME {
+            full: ticks,
+        };
+        ffi::SetThreadpoolTimerEx(fd, &mut time.time, 0, 0);
     }
 }
 
