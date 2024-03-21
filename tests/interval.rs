@@ -23,7 +23,7 @@ async fn test_interval() {
 }
 
 async fn test_interval_average(num_runs: usize, interval: time::Duration) {
-    let mut times = Vec::with_capacity(6000);
+    let mut times = Vec::with_capacity(num_runs);
 
     println!("interval={:?}", interval);
     let mut timer = async_timer::interval(interval);
@@ -52,10 +52,10 @@ async fn test_interval_average(num_runs: usize, interval: time::Duration) {
 
 #[tokio::test]
 async fn test_average_of_small_interval() {
-    test_interval_average(600, time::Duration::from_secs_f32(1. / 120.)).await;
+    test_interval_average(6000, time::Duration::from_secs_f32(1. / 120.)).await;
 }
 
 #[tokio::test]
 async fn test_average_of_mid_interval() {
-    test_interval_average(10, time::Duration::from_secs_f32(135. / 120.)).await;
+    test_interval_average(60, time::Duration::from_secs_f32(135. / 120.)).await;
 }
