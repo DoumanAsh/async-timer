@@ -1,7 +1,8 @@
 //!Interval module
 
+use std::time;
+use core::task;
 use core::future::Future;
-use core::{task, time};
 use core::pin::Pin;
 
 use crate::timer::Timer;
@@ -34,6 +35,7 @@ pub struct Interval<T=PlatformTimer> {
     timer: T,
     ///Timer interval, change to this value will be reflected on next restart of timer.
     pub interval: time::Duration,
+    finish_at: time::Instant,
 }
 
 impl Interval {
@@ -49,6 +51,7 @@ impl<T: Timer> Interval<T> {
     pub fn new(interval: time::Duration) -> Self {
         Self {
             timer: T::new(interval),
+            finish_at: time::Instant::now() + interval,
             interval,
         }
     }
@@ -61,7 +64,12 @@ impl<T: Timer> Interval<T> {
 
     ///Restarts interval
     pub fn restart(&mut self) {
-        let interval = self.interval;
+        let now = time::Instant::now();
+
+        let interval = match now.checked_duration_since(self.finish_at) {
+            Some(delayed) => self.interval - time::Duration::from_nanos((delayed.as_nanos() % self.interval.as_nanos()) as _),
+            None => self.interval
+        };
         self.timer.restart(interval);
     }
 
