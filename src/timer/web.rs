@@ -169,7 +169,7 @@ impl Drop for WebTimer {
             State::Running(ref mut fd, state) => unsafe {
                 (*state).cancel();
                 fd.clear();
-                Box::from_raw(state as *mut TimerState);
+                let _ = Box::from_raw(state as *mut TimerState);
             },
             _ => (),
         }
