@@ -24,6 +24,15 @@ impl crate::std::os::unix::io::AsRawFd for RawTimer {
     }
 }
 
+impl Drop for RawTimer {
+    #[inline(always)]
+    fn drop(&mut self) {
+        unsafe {
+            libc::close(self.0);
+        }
+    }
+}
+
 #[cfg(target_os = "android")]
 mod sys {
     #[repr(C)]
