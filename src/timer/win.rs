@@ -28,7 +28,7 @@ mod ffi {
 
     type PTP_TIMER_CALLBACK = Option<unsafe extern "system" fn(Instance: *mut c_void, Context: *mut c_void, Timer: *mut c_void)>;
 
-    extern "system" {
+    unsafe extern "system" {
         pub fn CloseThreadpoolTimer(pti: *mut c_void);
         pub fn CreateThreadpoolTimer(pfnti: PTP_TIMER_CALLBACK, pv: *mut c_void, pcbe: *mut c_void) -> *mut c_void;
         pub fn SetThreadpoolTimerEx(pti: *mut c_void, pftDueTime: *mut FILETIME, msPeriod: c_ulong, msWindowLength: c_ulong) -> c_int;
@@ -37,10 +37,12 @@ mod ffi {
 }
 
 unsafe extern "system" fn timer_callback(_: *mut ffi::c_void, data: *mut ffi::c_void, _: *mut ffi::c_void) {
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+    #[allow(clippy::cast_ptr_alignment)]
     let state = data as *mut TimerState;
 
-    (*state).wake();
+    unsafe {
+        (*state).wake();
+    }
 }
 
 fn time_create(state: *mut TimerState) -> ffi::PTP_TIMER {
@@ -92,7 +94,7 @@ impl super::Timer for WinTimer {
     #[inline(always)]
     fn new(timeout: time::Duration) -> Self {
         assert_time!(timeout);
-        debug_assert!(timeout.as_millis() <= u32::max_value().into());
+        debug_assert!(timeout.as_millis() <= u32::MAX.into());
         Self::new(timeout)
     }
 
@@ -100,7 +102,7 @@ impl super::Timer for WinTimer {
     fn is_ticking(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(_, ref state) => !state.is_done(),
+            State::Running(_, state) => !state.is_done(),
         }
     }
 
@@ -108,19 +110,19 @@ impl super::Timer for WinTimer {
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(_, ref state) => state.is_done(),
+            State::Running(_, state) => state.is_done(),
         }
     }
 
     fn restart(&mut self, new_value: time::Duration) {
         assert_time!(new_value);
-        debug_assert!(new_value.as_millis() <= u32::max_value().into());
+        debug_assert!(new_value.as_millis() <= u32::MAX.into());
 
         match &mut self.state {
-            State::Init(ref mut timeout) => {
+            State::Init(timeout) => {
                 *timeout = new_value;
             },
-            State::Running(ref fd, ref state) => {
+            State::Running(fd, state) => {
                 state.reset();
                 set_timer_value(*fd, new_value);
             }
@@ -129,13 +131,13 @@ impl super::Timer for WinTimer {
 
     fn restart_ctx(&mut self, new_value: time::Duration, waker: &task::Waker) {
         assert_time!(new_value);
-        debug_assert!(new_value.as_millis() <= u32::max_value().into());
+        debug_assert!(new_value.as_millis() <= u32::MAX.into());
 
         match &mut self.state {
-            State::Init(ref mut timeout) => {
+            State::Init(timeout) => {
                 *timeout = new_value;
             },
-            State::Running(ref fd, ref state) => {
+            State::Running(fd, state) => {
                 state.register(waker);
                 state.reset();
                 set_timer_value(*fd, new_value);
@@ -171,7 +173,7 @@ impl super::SyncTimer for WinTimer {
         }
 
         match &self.state {
-            State::Running(_, ref state) => init(&state),
+            State::Running(_, state) => init(&state),
             State::Init(_) => unreach!(),
         }
     }
