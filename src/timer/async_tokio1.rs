@@ -102,7 +102,7 @@ impl TimerFd for RawTimer {
     }
 }
 
-#[cfg(any(target_os = "bitrig", target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))]
+#[cfg(any(target_os = "dragonfly", target_os = "freebsd", target_os = "ios", target_os = "macos", target_os = "netbsd", target_os = "openbsd"))]
 impl TimerFd for RawTimer {
     fn new() -> Self {
         let fd = unsafe {
@@ -216,7 +216,7 @@ impl<T: TimerFd> super::Timer for AsyncTokioTimer<T> {
     #[inline(always)]
     fn new(timeout: time::Duration) -> Self {
         assert_time!(timeout);
-        debug_assert!(timeout.as_millis() <= u32::max_value().into());
+        debug_assert!(timeout.as_millis() <= u32::MAX.into());
         Self {
             state: State::Init(timeout),
         }
@@ -240,13 +240,13 @@ impl<T: TimerFd> super::Timer for AsyncTokioTimer<T> {
 
     fn restart(&mut self, new_value: time::Duration) {
         assert_time!(new_value);
-        debug_assert!(new_value.as_millis() <= u32::max_value().into());
+        debug_assert!(new_value.as_millis() <= u32::MAX.into());
 
         match &mut self.state {
-            State::Init(ref mut timeout) => {
+            State::Init(timeout) => {
                 *timeout = new_value;
             },
-            State::Running(ref mut fd, ref mut state) => {
+            State::Running(fd, state) => {
                 *state = false;
                 fd.get_mut().set(new_value);
             }
@@ -267,13 +267,15 @@ impl<T: TimerFd> Future for AsyncTokioTimer<T> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, ctx: &mut task::Context) -> task::Poll<Self::Output> {
-        if let State::Init(ref timeout) = &self.state {
-            let mut fd = AsyncFd::with_interest(T::new(), tokio::io::Interest::READABLE).expect("To create AsyncFd");
+        if let State::Init(timeout) = &self.state {
+            let mut fd = unsafe {
+                AsyncFd::register_with_interest(T::new(), tokio::io::Interest::READABLE).expect("To create AsyncFd")
+            };
             fd.get_mut().set(*timeout);
             self.state = State::Running(fd, false)
         };
 
-        if let State::Running(ref mut fd, ref mut state) = &mut self.state {
+        if let State::Running(fd, state) = &mut self.state {
             if *state {
                 return task::Poll::Ready(());
             }

@@ -15,7 +15,9 @@ mod plain_fn {
     static VTABLE: task::RawWakerVTable = task::RawWakerVTable::new(super::should_not_clone, action, action, super::noop::action);
 
     unsafe fn action(callback: *const ()) {
-        let func: fn() = mem::transmute(callback);
+        let func: fn() = unsafe {
+            mem::transmute(callback)
+        };
         func()
     }
 

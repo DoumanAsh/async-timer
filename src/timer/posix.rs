@@ -16,13 +16,17 @@ mod ffi {
     #[cfg(feature = "c_wrapper")]
     pub unsafe extern "C" fn timer_handler(value: libc::sigval) {
         let state = value.sival_ptr as *const TimerState;
-        (*state).wake();
+        unsafe {
+            (*state).wake();
+        }
     }
 
     #[cfg(not(feature = "c_wrapper"))]
     pub unsafe extern "C" fn timer_handler(_sig: libc::c_int, si: *mut libc::siginfo_t, _uc: *mut libc::c_void) {
-        let state = (*si).si_value().sival_ptr as *const TimerState;
-        (*state).wake();
+        unsafe {
+            let state = (*si).si_value().sival_ptr as *const TimerState;
+            (*state).wake();
+        }
     }
 
     #[repr(C)]
@@ -31,7 +35,7 @@ mod ffi {
         pub it_value: libc::timespec,
     }
 
-    extern "C" {
+    unsafe extern "C" {
         #[allow(unused)]
         pub fn timer_create(clockid: libc::clockid_t, sevp: *mut libc::sigevent, timerid: *mut timer_t) -> libc::c_int;
         pub fn timer_settime(timerid: timer_t, flags: libc::c_int, new_value: *const itimerspec, old_value: *mut itimerspec) -> libc::c_int;
@@ -51,7 +55,7 @@ fn init_sig() {
 
     let timer_sig = libc::sigaction {
         sa_flags: libc::SA_SIGINFO,
-        sa_sigaction: ffi::timer_handler as usize,
+        sa_sigaction: ffi::timer_handler as *const () as _,
         sa_mask: unsafe { sa_mask.assume_init() },
         #[cfg(any(target_os = "linux", target_os = "android"))]
         sa_restorer: None,
@@ -65,7 +69,7 @@ fn init_sig() {
 #[cfg(feature = "c_wrapper")]
 fn time_create(state: *mut TimerState) -> ffi::timer_t {
     #[link(name = "posix_wrapper", kind = "static")]
-    extern "C" {
+    unsafe extern "C" {
         fn posix_timer(_: Option<unsafe extern "C" fn(value: libc::sigval)>, _: *mut libc::c_void) -> ffi::timer_t;
     }
 
@@ -156,7 +160,7 @@ impl super::Timer for PosixTimer {
     fn is_ticking(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(_, ref state) => !state.is_done(),
+            State::Running(_, state) => !state.is_done(),
         }
     }
 
@@ -164,7 +168,7 @@ impl super::Timer for PosixTimer {
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(_, ref state) => state.is_done(),
+            State::Running(_, state) => state.is_done(),
         }
     }
 
@@ -172,10 +176,10 @@ impl super::Timer for PosixTimer {
         assert_time!(new_value);
 
         match &mut self.state {
-            State::Init(ref mut timeout) => {
+            State::Init(timeout) => {
                 *timeout = new_value;
             },
-            State::Running(fd, ref mut state) => {
+            State::Running(fd, state) => {
                 state.reset();
                 set_timer_value(*fd, new_value);
             }
@@ -186,10 +190,10 @@ impl super::Timer for PosixTimer {
         assert_time!(new_value);
 
         match &mut self.state {
-            State::Init(ref mut timeout) => {
+            State::Init(timeout) => {
                 *timeout = new_value;
             },
-            State::Running(fd, ref mut state) => {
+            State::Running(fd, state) => {
                 state.register(waker);
                 state.reset();
                 set_timer_value(*fd, new_value);
@@ -198,11 +202,11 @@ impl super::Timer for PosixTimer {
     }
 
     fn cancel(&mut self) {
-        match self.state {
+        match &mut self.state {
             State::Init(_) => (),
-            State::Running(fd, ref state) => unsafe {
+            State::Running(fd, state) => unsafe {
                 state.cancel();
-                ffi::timer_settime(fd, 0, &mut mem::zeroed(), ptr::null_mut());
+                ffi::timer_settime(*fd, 0, &mem::MaybeUninit::zeroed().assume_init(), ptr::null_mut());
             }
         }
     }
@@ -230,7 +234,7 @@ impl super::SyncTimer for PosixTimer {
         }
 
         match &self.state {
-            State::Running(_, ref state) => init(state),
+            State::Running(_, state) => init(state),
             State::Init(_) => unreach!(),
         }
     }

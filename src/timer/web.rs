@@ -47,7 +47,7 @@ fn timer_create(timeout: time::Duration, state: *const TimerState) -> TimerHandl
 
 enum State {
     Init(time::Duration),
-    Running(TimerHandle, *const TimerState),
+    Running(TimerHandle, *mut TimerState),
 }
 
 unsafe impl Send for State {}
@@ -79,7 +79,7 @@ impl super::Timer for WebTimer {
     fn is_ticking(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(_, ref state) => unsafe {
+            State::Running(_, state) => unsafe {
                 !(**state).is_done()
             },
         }
@@ -89,7 +89,7 @@ impl super::Timer for WebTimer {
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(_, ref state) => unsafe {
+            State::Running(_, state) => unsafe {
                 (**state).is_done()
             },
         }
@@ -99,10 +99,10 @@ impl super::Timer for WebTimer {
         assert_time!(new_value);
 
         match &mut self.state {
-            State::Init(ref mut timeout) => {
+            State::Init(timeout) => {
                 *timeout = new_value;
             },
-            State::Running(fd, ref state) => {
+            State::Running(fd, state) => {
                 unsafe { (**state).reset() };
                 *fd = timer_create(new_value, *state);
             }
@@ -113,10 +113,10 @@ impl super::Timer for WebTimer {
         assert_time!(new_value);
 
         match &mut self.state {
-            State::Init(ref mut timeout) => {
+            State::Init(timeout) => {
                 *timeout = new_value;
             },
-            State::Running(fd, ref state) => {
+            State::Running(fd, state) => {
                 unsafe { (**state).register(waker) };
                 unsafe { (**state).reset() };
                 *fd = timer_create(new_value, *state);
@@ -125,10 +125,10 @@ impl super::Timer for WebTimer {
     }
 
     fn cancel(&mut self) {
-        match self.state {
+        match &mut self.state {
             State::Init(_) => (),
-            State::Running(ref mut fd, state) => unsafe {
-                (*state).cancel();
+            State::Running(fd, state) => unsafe {
+                (&**state).cancel();
                 fd.clear()
             }
         }
@@ -148,7 +148,7 @@ impl super::SyncTimer for WebTimer {
         }
 
         match &self.state {
-            State::Running(_, ref state) => init(unsafe { &**state }),
+            State::Running(_, state) => init(unsafe { &**state }),
             State::Init(_) => unreach!(),
         }
     }
@@ -165,11 +165,11 @@ impl Future for WebTimer {
 
 impl Drop for WebTimer {
     fn drop(&mut self) {
-        match self.state {
-            State::Running(ref mut fd, state) => unsafe {
-                (*state).cancel();
+        match &mut self.state {
+            State::Running(fd, state) => unsafe {
+                (&**state).cancel();
                 fd.clear();
-                let _ = Box::from_raw(state as *mut TimerState);
+                let _ = Box::from_raw(*state);
             },
             _ => (),
         }
