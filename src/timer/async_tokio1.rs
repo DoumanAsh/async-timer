@@ -130,15 +130,15 @@ impl TimerFd for RawTimer {
         };
 
         let mut time = time.as_nanos();
-        if time > isize::max_value() as u128 {
+        if time > isize::MAX as u128 {
             event.fflags = libc::NOTE_USECONDS;
             time /= 1_000;
         }
-        if time > isize::max_value() as u128 {
+        if time > isize::MAX as u128 {
             event.fflags = 0; //default value is ms
             time /= 1_000;
         }
-        if time > isize::max_value() as u128 {
+        if time > isize::MAX as u128 {
             event.fflags = libc::NOTE_SECONDS;
             time /= 1_000;
         }

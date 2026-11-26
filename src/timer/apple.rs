@@ -23,7 +23,7 @@ mod ffi {
     //pub const DISPATCH_WALLTIME_NOW: dispatch_time_t = !1;
     pub const QOS_CLASS_DEFAULT: c_long = 0x15;
 
-    extern "C" {
+    unsafe extern "C" {
         pub static _dispatch_source_type_timer: c_long;
 
         pub fn dispatch_get_global_queue(identifier: c_long, flags: c_ulong) -> dispatch_queue_t;
@@ -43,7 +43,9 @@ mod ffi {
 unsafe extern "C" fn timer_handler(context: *mut c_void) {
     let state = context as *mut TimerState;
 
-    (*state).wake();
+    unsafe {
+        (*state).wake();
+    }
 }
 
 struct TimerHandle {
@@ -156,7 +158,7 @@ impl super::Timer for AppleTimer {
     fn is_ticking(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(_, ref state) => !state.is_done(),
+            State::Running(_, state) => !state.is_done(),
         }
     }
 
@@ -164,7 +166,7 @@ impl super::Timer for AppleTimer {
     fn is_expired(&self) -> bool {
         match &self.state {
             State::Init(_) => false,
-            State::Running(_, ref state) => state.is_done(),
+            State::Running(_, state) => state.is_done(),
         }
     }
 
@@ -172,10 +174,10 @@ impl super::Timer for AppleTimer {
         assert_time!(new_value);
 
         match &mut self.state {
-            State::Init(ref mut timeout) => {
+            State::Init(timeout) => {
                 *timeout = new_value;
             },
-            State::Running(fd, ref mut state) => {
+            State::Running(fd, state) => {
                 state.reset();
                 fd.set_delay(new_value);
             }
@@ -186,10 +188,10 @@ impl super::Timer for AppleTimer {
         assert_time!(new_value);
 
         match &mut self.state {
-            State::Init(ref mut timeout) => {
+            State::Init(timeout) => {
                 *timeout = new_value;
             },
-            State::Running(fd, ref mut state) => {
+            State::Running(fd, state) => {
                 state.register(waker);
                 state.reset();
                 fd.set_delay(new_value);
@@ -223,7 +225,7 @@ impl super::SyncTimer for AppleTimer {
         }
 
         match &self.state {
-            State::Running(_, ref state) => init(state),
+            State::Running(_, state) => init(state),
             State::Init(_) => unreach!(),
         }
     }
