@@ -57,7 +57,7 @@ jobs:
         target: [
           "arm-unknown-linux-musleabi",
           "i586-unknown-linux-musl",
-          "powerpc-unknown-linux-gnu",
+          #"powerpc-unknown-linux-gnu",
           "aarch64-unknown-linux-musl",
           #"mips-unknown-linux-musl",
           #"mips64-unknown-linux-gnuabi64"
