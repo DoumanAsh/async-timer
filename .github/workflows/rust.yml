@@ -30,7 +30,6 @@ jobs:
       min-rustc-version: "1.85.0"
       cargo-features: "c_wrapper"
       cargo-no-features: true
-
   check-tokio:
     if: github.event.pull_request.draft == false
     uses: DoumanAsh/douman-ci/.github/workflows/rust.yml@master
@@ -44,14 +43,12 @@ jobs:
       runs-on: ${{ matrix.runner }}
       min-rustc-version: "1.85.0"
       cargo-features: "tokio1"
-
   wasm-platform-test:
     needs: [check-regular, check-tokio]
     if: github.event.pull_request.draft == false
     uses: DoumanAsh/douman-ci/.github/workflows/wasm-rust.yml@master
     with:
       cargo-test-run: false
-
   cross-platform-test:
     needs: [check-regular, check-tokio]
     if: github.event.pull_request.draft == false
